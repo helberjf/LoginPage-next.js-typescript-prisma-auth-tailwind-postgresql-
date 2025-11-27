@@ -1,11 +1,6 @@
 import "./globals.css";
 import React from "react";
 
-export const metadata = {
-  title: "LoginApp",
-  description: "Login with React Hook Form + Zod",
-};
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
@@ -17,4 +12,3 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
-
