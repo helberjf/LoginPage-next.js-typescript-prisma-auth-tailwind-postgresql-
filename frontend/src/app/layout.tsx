@@ -1,12 +1,34 @@
-import "./globals.css";
+"use client";
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+import { usePathname } from "next/navigation";
+import "./globals.css";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { AuthProvider } from "@/contexts/AuthContext";
+import AppShell from "@/components/AppShell";
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+
+  const isAuthPage =
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/register");
+
   return (
-    <html lang="pt-BR">
-      <body className="bg-blue-100 dark:bg-dark-background text-gray-900 dark:text-dark-foreground antialiased min-h-screen">
-        <main className="flex items-center justify-center min-h-screen p-4">
-          {children}
-        </main>
+    <html lang="pt-BR" suppressHydrationWarning>
+      <body>
+        <ThemeProvider>
+          <AuthProvider>
+            {isAuthPage ? (
+              <main>{children}</main>
+            ) : (
+              <AppShell>{children}</AppShell>
+            )}
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

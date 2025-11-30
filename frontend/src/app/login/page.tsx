@@ -1,109 +1,110 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { loginSchema, LoginSchema } from "@/lib/validators/auth";
-import FormInput from "@/components/FormInput";
-import { signIn } from "next-auth/react";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useState } from 'react';
+import { AlertCircle, Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from "next/navigation";
 
-export default function LoginPage() {
-  const router = useRouter();
-  const [serverError, setServerError] = useState<string | null>(null);
+const loginSchema = z.object({
+  email: z.string().min(1, 'Email é obrigatório').email('Email inválido'),
+  password: z.string().min(1, 'Senha é obrigatória').min(6, 'Senha deve ter pelo menos 6 caracteres'),
+});
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginSchema>({
+type LoginFormData = z.infer<typeof loginSchema>;
+
+export default function Login() {
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const { login, isLoading } = useAuth();
+  const router = useRouter();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "", remember: false },
   });
 
-  async function onSubmit(values: LoginSchema) {
-    setServerError(null);
+  const onSubmit = async (data: LoginFormData) => {
+    setError(null);
 
-    const res = await signIn("credentials", {
-      redirect: false,
-      email: values.email,
-      password: values.password,
-    });
-
-    if (!res) return setServerError("Erro no servidor. Tente novamente mais tarde.");
-    if (res.error) return setServerError("Credenciais inválidas.");
-
-    router.push("/dashboard");
-  }
+    try {
+      await login(data.email, data.password);
+      setSuccess(true);
+      reset();
+      setTimeout(() => router.push('/dashboard'), 1000);
+    } catch (err) {
+      setError('Erro ao fazer login. Tente novamente.');
+      console.error(err);
+    }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background dark:bg-dark-background px-4">
-      <div className="w-full max-w-md bg-white dark:bg-dark-background text-black dark:text-dark-foreground p-10 rounded-3xl shadow-2xl">
-        {/* Título */}
-        <h1 className="text-4xl font-extrabold mb-2 text-center text-gray-700">Bem-vindo</h1>
-        <p className="text-gray-600 dark:text-gray-700 mb-8 text-center">
-          Use seu email e senha para entrar
-        </p>
+    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center px-4 py-8">
+      <div className="w-full max-w-md">
 
-        {/* Formulário */}
-        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6">
-          <FormInput
-            id="email"
-            label="Email"
-            type="email"
-            placeholder="seu@exemplo.com"
-            error={errors.email?.message}
-            {...register("email")}
-          />
-
-          <FormInput
-            id="password"
-            label="Senha"
-            type="password"
-            placeholder="••••••••"
-            error={errors.password?.message}
-            {...register("password")}
-          />
-
-          <div className="flex items-center justify-between text-sm text-gray-700 dark:text-gray-700">
-            <label className="inline-flex items-center">
-              <input
-                {...register("remember")}
-                type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 dark:border-gray-700"
-              />
-              <span className="ml-2">Lembrar-me</span>
-            </label>
-
-            <a
-              href="#"
-              className="text-primary dark:text-primary-light font-medium hover:underline"
-            >
-              Esqueci a senha
-            </a>
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center">
+              <span className="text-white font-bold text-lg">AM</span>
+            </div>
           </div>
+          <h1 className="text-3xl font-bold mb-2">Entrar</h1>
+          <p className="text-muted-foreground">Faça login na sua conta para continuar</p>
+        </div>
 
-          {serverError && (
-            <p className="text-red-600 text-sm">{serverError}</p>
+        {/* Form */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+
+          {error && (
+            <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/30 flex gap-3">
+              <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
           )}
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full py-3 rounded-xl border-2 border-solid border-blue-950 hover:opacity-60 bg font-semibold text-black bg-primary hover:bg-primary-dark cursor-pointer"
-          >
-            {isSubmitting ? "Entrando..." : "Entrar"}
-          </button>
+          {success && (
+            <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30 flex gap-3">
+              <span className="text-sm text-green-600">✓ Login realizado com sucesso!</span>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <label htmlFor="email" className="text-sm font-medium">Email</label>
+            <Input id="email" type="email" {...register('email')} className={errors.email ? 'border-destructive' : ''} />
+            {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="password" className="text-sm font-medium">Senha</label>
+            <Input id="password" type="password" {...register('password')} className={errors.password ? 'border-destructive' : ''} />
+            {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
+          </div>
+
+          <Button type="submit" className="w-full bg-primary" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                Entrando...
+              </>
+            ) : (
+              'Entrar'
+            )}
+          </Button>
         </form>
 
-        {/* Link secundário */}
-        <div className="mt-8 text-center text-sm text-gray-600 dark:text-gray-500">
-          <p>
-            Não tem conta?{" "}
-            <a
-              href="/register"
-              className="font-semibold text-primary dark:text-primary-light hover:underline"
-            >
-              Cadastre-se
-            </a>
-          </p>
-        </div>
+        <p className="text-center text-sm text-muted-foreground mt-6">
+          Não tem uma conta? <a href="@/register" className="text-primary font-medium hover:opacity-80">Registre-se aqui</a>
+        </p>
+
       </div>
     </div>
   );
