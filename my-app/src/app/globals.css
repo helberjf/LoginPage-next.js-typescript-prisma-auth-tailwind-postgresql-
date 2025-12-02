@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+/* Custom global styles */
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100;
+}
+
+* {
+  @apply transition-colors duration-200;
+}

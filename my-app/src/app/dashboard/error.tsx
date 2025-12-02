@@ -1,23 +1,21 @@
-// app/(dashboard)/error.tsx
+// src/app/(dashboard)/error.tsx
 "use client";
 
-import { useEffect } from "react";
-
 export default function DashboardError({ error }: { error: Error }) {
-  useEffect(() => {
-    console.error("Dashboard error:", error);
-  }, [error]);
+  console.error(error);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-8">
-      <div className="max-w-md w-full text-center">
-        <h2 className="text-2xl font-bold mb-4">Ops — Algo deu errado</h2>
-        <p className="mb-4">Estamos trabalhando nisso. Atualize a página ou volte ao início.</p>
-        <div className="flex gap-2 justify-center">
-          <a href="/" className="px-4 py-2 border rounded">Voltar</a>
-          <button onClick={() => location.reload()} className="px-4 py-2 bg-blue-600 text-white rounded">Recarregar</button>
-        </div>
-      </div>
+    <div className="min-h-[50vh] flex flex-col items-center justify-center text-center p-6">
+      <h2 className="text-2xl font-bold mb-2">Erro inesperado</h2>
+      <p className="text-neutral-500 mb-4">
+        Algo deu errado ao carregar o dashboard.
+      </p>
+      <button
+        onClick={() => location.reload()}
+        className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+      >
+        Tentar novamente
+      </button>
     </div>
   );
 }

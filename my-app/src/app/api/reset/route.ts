@@ -1,6 +1,8 @@
+// src/app/api/reset/route.ts
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { hash } from "bcrypt";
+import bcrypt from "bcryptjs";
+
 import { resetPasswordSchema } from "@/lib/auth/validation";
 
 export async function POST(req: Request) {
@@ -46,7 +48,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const hashed = await hash(password, 10);
+    const hashed = await bcrypt.hash(password, 10);
 
     await prisma.user.update({
       where: { email },
@@ -59,6 +61,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
+    console.error(err);
     return NextResponse.json(
       { error: "Erro ao redefinir senha" },
       { status: 500 }
