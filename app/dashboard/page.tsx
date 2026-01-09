@@ -82,11 +82,13 @@ export default async function DashboardPage() {
               </p>
 
               <ul className="text-sm list-disc pl-4">
-                {order.items.map((item) => (
-                  <li key={item.id}>
-                    {item.quantity}× {item.product.name}
-                  </li>
-                ))}
+                {order.items.map(
+                  (item: (typeof order.items)[number]) => (
+                    <li key={item.id}>
+                      {item.quantity}× {item.product.name}
+                    </li>
+                  )
+                )}
               </ul>
             </li>
           ))}
