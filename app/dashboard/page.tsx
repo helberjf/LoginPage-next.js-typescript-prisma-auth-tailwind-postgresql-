@@ -1,7 +1,20 @@
+// app/dashboard/page.tsx
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
 import SignOutButton from "@/components/SignOutButton";
+import { Prisma } from "@prisma/client";
+
+type OrderWithRelations = Prisma.OrderGetPayload<{
+  include: {
+    items: {
+      include: {
+        product: true;
+      };
+    };
+    payments: true;
+  };
+}>;
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -10,7 +23,7 @@ export default async function DashboardPage() {
     return <p>Não autenticado</p>;
   }
 
-  const orders = await prisma.order.findMany({
+  const orders: OrderWithRelations[] = await prisma.order.findMany({
     where: {
       userId: session.user.id,
     },

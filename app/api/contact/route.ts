@@ -32,9 +32,12 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return NextResponse.json(
-      { error: "Erro ao enviar mensagem" },
-      { status: 400 }
-    );
-  }
+      console.error("Contact error:", error);
+
+      return NextResponse.json(
+        { error: "Erro ao enviar mensagem" },
+        { status: 400 }
+      );
+    } 
 }
+  

@@ -6,6 +6,9 @@ const mg = new Mailgun(formData).client({
   key: process.env.MAILGUN_API_KEY!,
 });
 
+/**
+ * Envia email usando Mailgun
+ */
 export async function sendEmail({
   to,
   subject,
