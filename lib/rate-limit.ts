@@ -1,35 +1,36 @@
-// src/lib/rate-limit.ts
-
-const rateLimitMap = new Map<string, { count: number; last: number }>();
-
-interface Options {
+type RateLimitOptions = {
   limit: number;
   windowMs: number;
-}
+};
 
-export function rateLimit({ limit, windowMs }: Options) {
-  return (ip: string) => {
-    const now = Date.now();
-    const entry = rateLimitMap.get(ip);
+type RateLimitRecord = {
+  count: number;
+  expires: number;
+};
 
-    if (!entry) {
-      rateLimitMap.set(ip, { count: 1, last: now });
-      return true;
-    }
+const store = new Map<string, RateLimitRecord>();
 
-    // Janela expirou
-    if (now - entry.last > windowMs) {
-      rateLimitMap.set(ip, { count: 1, last: now });
-      return true;
-    }
+export async function rateLimit(
+  req: Request,
+  { limit, windowMs }: RateLimitOptions
+) {
+  const forwardedFor = req.headers.get("x-forwarded-for");
+  const ip = forwardedFor?.split(",")[0]?.trim() ?? "unknown-ip";
 
-    entry.count++;
+  const now = Date.now();
+  const record = store.get(ip);
 
-    // Ultrapassou limite
-    if (entry.count > limit) {
-      return false;
-    }
+  if (!record || record.expires < now) {
+    store.set(ip, {
+      count: 1,
+      expires: now + windowMs,
+    });
+    return;
+  }
 
-    return true;
-  };
+  if (record.count >= limit) {
+    throw new Error("RATE_LIMIT_EXCEEDED");
+  }
+
+  record.count += 1;
 }
