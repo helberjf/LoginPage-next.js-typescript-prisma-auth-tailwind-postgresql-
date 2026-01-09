@@ -15,7 +15,7 @@ export const emailSchema = z
 export const nameSchema = z
   .string()
   .trim()
-  .min(2, "Must contain at least 2 characters");
+  .min(2, "Name must contain at least 2 characters");
 
 export const passwordSchema = z
   .string()
@@ -49,13 +49,16 @@ export const loginSchema = z.object({
 
 export const registerSchema = z
   .object({
-    firstName: nameSchema,
-    lastName: nameSchema,
+    name: nameSchema,              // ✅ único campo de nome
     email: emailSchema,
     password: passwordSchema,
     confirm: confirmPasswordSchema,
+    cpf: z.string().optional(),    // opcional, alinhado ao Prisma
   })
-  .refine((data) => data.password === data.confirm, matchPasswords("password", "confirm"));
+  .refine(
+    (data) => data.password === data.confirm,
+    matchPasswords("password", "confirm")
+  );
 
 export const forgotPasswordSchema = z.object({
   email: emailSchema,
@@ -66,10 +69,13 @@ export const resetPasswordSchema = z
     password: passwordSchema,
     confirm: confirmPasswordSchema,
   })
-  .refine((data) => data.password === data.confirm, matchPasswords("password", "confirm"));
+  .refine(
+    (data) => data.password === data.confirm,
+    matchPasswords("password", "confirm")
+  );
 
 /* =========================
-   Types (optional but recommended)
+   Types
 ========================= */
 
 export type LoginInput = z.infer<typeof loginSchema>;
