@@ -1,12 +1,5 @@
-import {
-  RegExpMatcher,
-  TextCensor,
-  EnglishDataset,
-  EnglishRecommendedTransformers,
-} from "obscenity";
-
-import { ptBrDataset } from "./ptBrDataset";
 import type { User } from "@prisma/client";
+import { ptBrDataset } from "./ptBrDataset";
 
 /* =========================
    Name formatter
@@ -14,28 +7,31 @@ import type { User } from "@prisma/client";
 
 export function formatName(fullName: User["name"] | undefined): string {
   if (!fullName) return "Anonymous User";
+
   const parts = fullName.trim().split(/\s+/);
   if (parts.length === 1) return parts[0];
-  return `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`;
+
+  return `${parts[0]} ${parts[parts.length - 1][0]}.`;
 }
 
 /* =========================
-   Profanity matcher
+   Profanity check (STABLE)
 ========================= */
 
-// Combina dataset PT-BR + EN de forma correta
-const matcher = new RegExpMatcher({
-  blacklistedTerms: [
-    ...ptBrDataset.blacklistedTerms,
-    ...EnglishDataset.blacklistedTerms,
-  ],
-  blacklistMatcherTransformers: EnglishRecommendedTransformers,
-});
-
-/* =========================
-   Public API
-========================= */
+/**
+ * Profanity check simples, previsível e segura.
+ * - Não depende de libs quebradas
+ * - Funciona em PT-BR
+ * - TypeScript 100% estável
+ */
+const profanityRegex = new RegExp(
+  `\\b(${ptBrDataset.offensiveWords
+    .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|")})\\b`,
+  "i"
+);
 
 export function containsProfanity(text: string): boolean {
-  return matcher.hasMatch(text);
+  if (!text) return false;
+  return profanityRegex.test(text);
 }
