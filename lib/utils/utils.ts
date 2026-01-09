@@ -1,3 +1,4 @@
+'use server';
 import {
   RegExpMatcher,
   englishRecommendedTransformers as transformers,
