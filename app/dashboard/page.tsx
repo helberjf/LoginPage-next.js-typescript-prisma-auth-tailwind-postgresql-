@@ -3,21 +3,6 @@ import prisma from "@/lib/prisma";
 import Link from "next/link";
 import SignOutButton from "@/components/SignOutButton";
 
-import type {
-  Order,
-  OrderItem,
-  Product,
-  Payment,
-} from "@prisma/client";
-
-type OrderWithRelations = Order & {
-  items: (OrderItem & {
-    product: Product;
-  })[];
-  payments: Payment[];
-};
-
-
 export default async function DashboardPage() {
   const session = await auth();
 
@@ -25,7 +10,7 @@ export default async function DashboardPage() {
     return <p>Não autenticado</p>;
   }
 
-  const orders: OrderWithRelations[] = await prisma.order.findMany({
+  const orders = await prisma.order.findMany({
     where: {
       userId: session.user.id,
     },
@@ -73,7 +58,7 @@ export default async function DashboardPage() {
         </p>
       ) : (
         <ul className="space-y-4">
-          {orders.map((order) => (
+          {orders.map((order: (typeof orders)[number]) => (
             <li
               key={order.id}
               className="border rounded-md p-4 space-y-2"
