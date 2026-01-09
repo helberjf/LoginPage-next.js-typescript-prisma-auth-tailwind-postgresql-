@@ -1,9 +1,8 @@
-// app/dashboard/page.tsx
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
 import SignOutButton from "@/components/SignOutButton";
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 
 type OrderWithRelations = Prisma.OrderGetPayload<{
   include: {
