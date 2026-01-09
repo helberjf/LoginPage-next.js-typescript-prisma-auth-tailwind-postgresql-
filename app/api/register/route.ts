@@ -1,8 +1,8 @@
-// src/app/api/register/route.ts
-import prisma from "../../../lib/prisma";
+// app/api/register/route.ts
+import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { registerSchema } from "../../../lib/auth/validation";
+import { registerSchema } from "@/lib/auth/validation";
 import { ZodError } from "zod";
 
 export async function POST(req: Request) {
@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const data = registerSchema.parse(body);
 
-    // Sempre normalizar email
+    // Normaliza email
     const email = data.email.toLowerCase();
 
     // Verifica se o email já existe
@@ -19,7 +19,6 @@ export async function POST(req: Request) {
     });
 
     if (exists) {
-      // evita conflito com contas do Google sem senha
       const hasPassword = !!exists.password;
 
       return NextResponse.json(
@@ -35,17 +34,16 @@ export async function POST(req: Request) {
     // Hash da senha
     const passwordHash = await bcrypt.hash(data.password, 10);
 
-    // Cria usuário
+    // Cria usuário (SEM first/last name)
     await prisma.user.create({
       data: {
-        firstName: data.firstName,
-        lastName: data.lastName,
+        name: data.name, // <-- CORRETO
         email,
         password: passwordHash,
-        role: "CUSTOMER" // explícito
-      }
+        cpf: data.cpf ?? null,
+        role: "CUSTOMER",
+      },
     });
-
 
     return NextResponse.json(
       { message: "Usuário registrado com sucesso" },
@@ -54,12 +52,17 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("[REGISTER_ERROR]", error);
 
-    // Erros de validação do Zod
     if (error instanceof ZodError) {
-      const issues = error.issues?.[0]?.message;
-      return NextResponse.json({ error: issues ?? "Dados inválidos" }, { status: 400 });
+      const message = error.issues?.[0]?.message;
+      return NextResponse.json(
+        { error: message ?? "Dados inválidos" },
+        { status: 400 }
+      );
     }
 
-    return NextResponse.json({ error: "Erro ao registrar usuário" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Erro ao registrar usuário" },
+      { status: 500 }
+    );
   }
 }
