@@ -2,18 +2,21 @@ import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
 import SignOutButton from "@/components/SignOutButton";
-import type { Prisma } from "@prisma/client";
 
-type OrderWithRelations = Prisma.OrderGetPayload<{
-  include: {
-    items: {
-      include: {
-        product: true;
-      };
-    };
-    payments: true;
-  };
-}>;
+import type {
+  Order,
+  OrderItem,
+  Product,
+  Payment,
+} from "@prisma/client";
+
+type OrderWithRelations = Order & {
+  items: (OrderItem & {
+    product: Product;
+  })[];
+  payments: Payment[];
+};
+
 
 export default async function DashboardPage() {
   const session = await auth();
