@@ -1,24 +1,24 @@
-import formData from 'form-data';
-import Mailgun from 'mailgun.js';
+import formData from "form-data";
+import Mailgun from "mailgun.js";
 
 const mg = new Mailgun(formData).client({
-  username: 'api',
+  username: "api",
   key: process.env.MAILGUN_API_KEY!,
 });
 
-export async function sendContactEmail({
+export async function sendEmail({
   to,
   subject,
-  text,
+  html,
 }: {
   to: string;
   subject: string;
-  text: string;
+  html: string;
 }) {
   return mg.messages.create(process.env.MAILGUN_DOMAIN!, {
-    from: `Contato <mailgun@${process.env.MAILGUN_DOMAIN}>`,
+    from: process.env.MAILGUN_FROM!,
     to,
     subject,
-    text,
+    html,
   });
 }
