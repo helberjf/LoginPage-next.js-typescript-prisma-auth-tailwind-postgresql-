@@ -1,6 +1,8 @@
+// components/Sidebar.tsx
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Session } from "next-auth";
 import {
   LayoutDashboard,
@@ -15,6 +17,8 @@ type SidebarProps = {
 };
 
 export default function Sidebar({ user }: SidebarProps) {
+  const pathname = usePathname();
+
   return (
     <aside className="hidden md:flex w-64 flex-col border-r bg-white dark:bg-neutral-900">
       {/* User */}
@@ -31,23 +35,30 @@ export default function Sidebar({ user }: SidebarProps) {
       <nav className="flex-1 p-4 space-y-1 text-sm">
         <SidebarLink
           href="/dashboard"
-          icon={<LayoutDashboard size={16} />}
           label="Dashboard"
+          icon={<LayoutDashboard size={16} />}
+          active={pathname === "/dashboard"}
         />
+
         <SidebarLink
           href="/dashboard/orders"
-          icon={<ShoppingCart size={16} />}
           label="Pedidos"
+          icon={<ShoppingCart size={16} />}
+          active={pathname.startsWith("/dashboard/orders")}
         />
+
         <SidebarLink
           href="/dashboard/payments"
-          icon={<CreditCard size={16} />}
           label="Pagamentos"
+          icon={<CreditCard size={16} />}
+          active={pathname.startsWith("/dashboard/payments")}
         />
+
         <SidebarLink
           href="/dashboard/profile"
-          icon={<User size={16} />}
           label="Perfil"
+          icon={<User size={16} />}
+          active={pathname.startsWith("/dashboard/profile")}
         />
       </nav>
 
@@ -63,15 +74,22 @@ function SidebarLink({
   href,
   icon,
   label,
+  active,
 }: {
   href: string;
   icon: React.ReactNode;
   label: string;
+  active: boolean;
 }) {
   return (
     <Link
       href={href}
-      className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800"
+      className={[
+        "flex items-center gap-3 px-3 py-2 rounded-md transition",
+        active
+          ? "bg-neutral-100 dark:bg-neutral-800 font-medium"
+          : "hover:bg-neutral-100 dark:hover:bg-neutral-800",
+      ].join(" ")}
     >
       {icon}
       <span>{label}</span>
