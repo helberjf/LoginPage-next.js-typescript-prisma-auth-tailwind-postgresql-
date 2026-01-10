@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogOut } from "lucide-react";
 import { Session } from "next-auth";
-import SignOutButton from "@/components/SignOutButton";
+import { signOut } from "next-auth/react";
+
 import { SidebarNav } from "@/components/SidebarNav";
 
 type SidebarMobileProps = {
@@ -17,10 +18,11 @@ export default function SidebarMobile({ user }: SidebarMobileProps) {
 
   return (
     <>
+      {/* Botão abrir */}
       {!open && (
         <button
           aria-label="Abrir menu"
-          className="md:hidden fixed top-4 left-4 z-40 p-2 bg-white dark:bg-neutral-800 rounded-md shadow"
+          className="md:hidden fixed top-4 left-4 z-40 p-2 rounded-md bg-white dark:bg-neutral-800 shadow"
           onClick={() => setOpen(true)}
         >
           <Menu size={20} />
@@ -54,15 +56,15 @@ export default function SidebarMobile({ user }: SidebarMobileProps) {
               </div>
 
               <button
-                onClick={() => setOpen(false)}
                 aria-label="Fechar menu"
+                onClick={() => setOpen(false)}
                 className="p-1"
               >
                 <X size={20} />
               </button>
             </header>
 
-            {/* Nav */}
+            {/* Navegação */}
             <nav className="flex-1 flex flex-col gap-1 text-sm">
               {SidebarNav.map(({ label, href, icon: Icon, adminOnly }) => {
                 if (adminOnly && !isAdmin) return null;
@@ -81,9 +83,16 @@ export default function SidebarMobile({ user }: SidebarMobileProps) {
               })}
             </nav>
 
-            {/* Footer */}
-            <footer className="pt-4 border-t border-neutral-100 dark:border-neutral-800">
-              <SignOutButton className="w-full text-left" />
+            {/* Footer / Logout */}
+            <footer className="pt-4 border-t border-neutral-200 dark:border-neutral-800">
+              <button
+                onClick={() => signOut({ callbackUrl: "/" })}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+              >
+                <LogOut size={16} />
+                Sair
+              </button>
+
               <div className="mt-2 text-xs text-neutral-500">
                 Role:{" "}
                 <span className="font-medium text-neutral-700 dark:text-neutral-300">
