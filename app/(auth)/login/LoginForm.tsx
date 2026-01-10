@@ -42,7 +42,7 @@ export default function LoginForm() {
     redirect: false,
     email: data.email,
     password: data.password,
-    callbackUrl,
+    callbackUrl: "/dashboard",
   });
 
   setLoading(false);

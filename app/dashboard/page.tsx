@@ -1,99 +1,191 @@
-import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
-import SignOutButton from "@/components/SignOutButton";
 
+/**
+ * IMPORTANTE:
+ * - A autenticação já foi garantida pelo layout
+ * - Aqui cuidamos apenas de dados e UI
+ */
 export default async function DashboardPage() {
-  const session = await auth();
+  /**
+   * OBS:
+   * Neste estágio, buscamos o usuário pelo relacionamento indireto:
+   * orders → user
+   *
+   * Em breve isso pode ser refinado passando o userId pelo layout/context.
+   */
 
-  if (!session?.user?.id) {
-    return <p>Não autenticado</p>;
-  }
-
-  const orders = await prisma.order.findMany({
-    where: {
-      userId: session.user.id,
-    },
+  // Buscar usuário mais recente com pedidos
+  const user = await prisma.user.findFirst({
     orderBy: {
       createdAt: "desc",
     },
-    include: {
-      items: {
-        include: {
-          product: true,
-        },
-      },
-      payments: true,
+    select: {
+      id: true,
+      name: true,
     },
   });
 
-  return (
-    <div className="space-y-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">
-          Olá, {session.user.name ?? "Usuário"}
-        </h1>
+  if (!user) {
+    return (
+      <p className="text-sm text-neutral-500">
+        Nenhum usuário encontrado.
+      </p>
+    );
+  }
 
-        <SignOutButton />
+  const [
+    totalOrders,
+    paidOrders,
+    totalSpent,
+    lastOrder,
+  ] = await Promise.all([
+    prisma.order.count({
+      where: { userId: user.id },
+    }),
+
+    prisma.order.count({
+      where: {
+        userId: user.id,
+        status: "PAID",
+      },
+    }),
+
+    prisma.order.aggregate({
+      where: {
+        userId: user.id,
+        status: "PAID",
+      },
+      _sum: {
+        totalCents: true,
+      },
+    }),
+
+    prisma.order.findFirst({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        status: true,
+        totalCents: true,
+        createdAt: true,
+      },
+    }),
+  ]);
+
+  return (
+    <div className="space-y-10">
+      {/* Header */}
+      <header>
+        <h1 className="text-3xl font-bold">
+          Dashboard
+        </h1>
+        <p className="text-neutral-500">
+          Visão geral da sua conta
+        </p>
       </header>
 
-      <section className="p-4 rounded-md border">
-        <p>Email: {session.user.email}</p>
+      {/* Cards */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <DashboardCard
+          label="Total de pedidos"
+          value={totalOrders}
+        />
+
+        <DashboardCard
+          label="Pedidos pagos"
+          value={paidOrders}
+        />
+
+        <DashboardCard
+          label="Total gasto"
+          value={
+            totalSpent._sum.totalCents
+              ? `R$ ${(totalSpent._sum.totalCents / 100).toFixed(2)}`
+              : "R$ 0,00"
+          }
+        />
+
+        <DashboardCard
+          label="Último pedido"
+          value={
+            lastOrder
+              ? `#${lastOrder.id.slice(0, 8)}`
+              : "—"
+          }
+        />
       </section>
 
-      <section className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Meus pedidos</h2>
+      {/* Último pedido */}
+      {lastOrder && (
+        <section className="p-4 rounded-lg border bg-white dark:bg-neutral-900">
+          <h2 className="text-lg font-semibold mb-2">
+            Último pedido
+          </h2>
+
+          <div className="flex justify-between text-sm">
+            <span>
+              Pedido #{lastOrder.id.slice(0, 8)}
+            </span>
+            <span className="text-neutral-500">
+              {lastOrder.status}
+            </span>
+          </div>
+
+          <p className="text-sm mt-2">
+            Total: R$ {(lastOrder.totalCents / 100).toFixed(2)}
+          </p>
+
+          <p className="text-xs text-neutral-500">
+            Criado em{" "}
+            {lastOrder.createdAt.toLocaleDateString("pt-BR")}
+          </p>
+        </section>
+      )}
+
+      {/* Ações rápidas */}
+      <section className="flex flex-wrap gap-4">
+        <Link
+          href="/dashboard/orders"
+          className="px-4 py-2 rounded-md bg-neutral-900 text-white hover:bg-neutral-800"
+        >
+          Ver pedidos
+        </Link>
+
+        <Link
+          href="/dashboard/payments"
+          className="px-4 py-2 rounded-md border hover:bg-neutral-50"
+        >
+          Pagamentos
+        </Link>
 
         <Link
           href="/products"
-          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+          className="px-4 py-2 rounded-md border hover:bg-neutral-50"
         >
-          Comprar mais produtos
+          Comprar novamente
         </Link>
       </section>
+    </div>
+  );
+}
 
-      {orders.length === 0 ? (
-        <p className="text-neutral-400 text-sm">
-          Você ainda não fez nenhum pedido.
-        </p>
-      ) : (
-        <ul className="space-y-4">
-          {orders.map((order: (typeof orders)[number]) => (
-            <li
-              key={order.id}
-              className="border rounded-md p-4 space-y-2"
-            >
-              <div className="flex justify-between">
-                <span className="font-semibold">
-                  Pedido #{order.id.slice(0, 8)}
-                </span>
-                <span className="text-sm text-neutral-500">
-                  {order.status}
-                </span>
-              </div>
-
-              <p className="text-sm">
-                Total: R$ {(order.totalCents / 100).toFixed(2)}
-              </p>
-
-              <p className="text-xs text-neutral-500">
-                Criado em:{" "}
-                {order.createdAt.toLocaleDateString("pt-BR")}
-              </p>
-
-              <ul className="text-sm list-disc pl-4">
-                {order.items.map(
-                  (item: (typeof order.items)[number]) => (
-                    <li key={item.id}>
-                      {item.quantity}× {item.product.name}
-                    </li>
-                  )
-                )}
-              </ul>
-            </li>
-          ))}
-        </ul>
-      )}
+/* Card reutilizável */
+function DashboardCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="p-4 rounded-lg border bg-white dark:bg-neutral-900">
+      <p className="text-sm text-neutral-500">
+        {label}
+      </p>
+      <p className="text-2xl font-semibold mt-1">
+        {value}
+      </p>
     </div>
   );
 }

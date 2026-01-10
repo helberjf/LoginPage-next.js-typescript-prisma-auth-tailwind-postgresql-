@@ -1,5 +1,5 @@
 import ProductForm from '@/components/admin/ProductForm'
-import Layout from '@/components/Layout'
+import Layout from '@/components/layout'
 
 type Props = { params: { id: string } }
 

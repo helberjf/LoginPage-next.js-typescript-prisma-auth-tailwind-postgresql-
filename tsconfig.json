@@ -33,6 +33,6 @@
     "app",
     "lib",
     "types"
-  ],
+, "prisma"  ],
   "exclude": ["node_modules"]
 }

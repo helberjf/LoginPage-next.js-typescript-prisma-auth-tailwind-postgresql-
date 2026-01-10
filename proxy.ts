@@ -1,25 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
+import { NextResponse } from "next/server";
 
-const protectedPaths = ["/dashboard", "/api/users"];
-const SESSION_COOKIE = "authjs.session-token";
+export default auth((req) => {
+  const isLogged = !!req.auth;
+  const pathname = req.nextUrl.pathname;
 
-export function proxy(req: NextRequest) {
-  const url = req.nextUrl.clone();
-  const path = url.pathname;
-  const session = req.cookies.get(SESSION_COOKIE)?.value;
-
-  // Bloqueia e redireciona se precisa de login
-  if (protectedPaths.some(p => path.startsWith(p)) && !session) {
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
+  // não logado → login
+  if (!isLogged && pathname.startsWith("/dashboard")) {
+    return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  // Continua
+  // logado → dashboard
+  if (isLogged && pathname === "/login") {
+    return NextResponse.redirect(new URL("/dashboard", req.url));
+  }
+
   return NextResponse.next();
-}
+});
 
 export const config = {
-  matcher: [
-    "/((?!_next|static|favicon.ico|logo|fonts|.*\\..*).*)"
-  ],
+  matcher: ["/((?!api|_next|favicon.ico).*)"],
 };

@@ -58,6 +58,7 @@ export const authConfig: NextAuthConfig = {
         return {
           id: user.id,
           email: user.email,
+          name: user.name,
           role: user.role, // vem do banco
         };
       },
