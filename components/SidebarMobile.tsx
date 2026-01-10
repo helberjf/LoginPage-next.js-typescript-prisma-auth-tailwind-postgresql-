@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { Session } from "next-auth";
 import SignOutButton from "@/components/SignOutButton";
-import { sidebarNav } from "@/components/SidebarNav";
+import { SidebarNav } from "@/components/SidebarNav";
 
 type SidebarMobileProps = {
   user: Session["user"];
@@ -64,7 +64,7 @@ export default function SidebarMobile({ user }: SidebarMobileProps) {
 
             {/* Nav */}
             <nav className="flex-1 flex flex-col gap-1 text-sm">
-              {sidebarNav.map(({ label, href, icon: Icon, adminOnly }) => {
+              {SidebarNav.map(({ label, href, icon: Icon, adminOnly }) => {
                 if (adminOnly && !isAdmin) return null;
 
                 return (

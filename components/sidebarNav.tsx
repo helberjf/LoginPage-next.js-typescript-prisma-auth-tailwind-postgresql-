@@ -21,7 +21,7 @@ export type SidebarItem = {
  * Fonte única de verdade da navegação
  * Desktop e Mobile usam ESTE arquivo
  */
-export const sidebarNav: SidebarItem[] = [
+export const SidebarNav: SidebarItem[] = [
   // CLIENTE
   {
     label: "Dashboard",
