@@ -10,7 +10,7 @@ import {
   CreditCard,
   User,
 } from "lucide-react";
-import SignOutButton from "@/components/signOutButton";
+import SignOutButton from "@/components/SignOutButton";
 
 type SidebarProps = {
   user: Session["user"];

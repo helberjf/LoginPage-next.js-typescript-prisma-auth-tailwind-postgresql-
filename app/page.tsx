@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 import { FaGoogle } from "react-icons/fa";
-import ThemeSwitcher from "@/components/themeSwitcher";
+import ThemeSwitcher from "@/components/ThemeSwitcher";
 
 export default function Home() {
   const { data: session } = useSession();

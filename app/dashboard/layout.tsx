@@ -2,9 +2,9 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 
-import Sidebar from "@/components/sidebar";
-import SidebarMobile from "@/components/sidebarMobile";
-import SignOutButton from "@/components/signOutButton";
+import Sidebar from "@/components/Sidebar";
+import SidebarMobile from "@/components/SidebarMobile";
+import SignOutButton from "@/components/SignOutButton";
 
 export default async function DashboardLayout({
   children,

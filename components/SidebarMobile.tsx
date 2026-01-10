@@ -4,8 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { Session } from "next-auth";
-import SignOutButton from "@/components/signOutButton";
-import { sidebarNav } from "@/components/sidebarNav";
+import SignOutButton from "@/components/SignOutButton";
+import { sidebarNav } from "@/components/SidebarNav";
 
 type SidebarMobileProps = {
   user: Session["user"];
