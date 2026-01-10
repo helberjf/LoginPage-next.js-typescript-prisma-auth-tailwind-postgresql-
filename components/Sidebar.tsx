@@ -1,16 +1,11 @@
-// components/Sidebar.tsx
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Session } from "next-auth";
-import {
-  LayoutDashboard,
-  ShoppingCart,
-  CreditCard,
-  User,
-} from "lucide-react";
+
 import SignOutButton from "@/components/SignOutButton";
+import { SidebarNav } from "@/components/SidebarNav";
 
 type SidebarProps = {
   user: Session["user"];
@@ -18,12 +13,13 @@ type SidebarProps = {
 
 export default function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
+  const isAdmin = user?.role === "ADMIN";
 
   return (
     <aside className="hidden md:flex w-64 flex-col border-r bg-white dark:bg-neutral-900">
       {/* User */}
       <div className="p-6 border-b">
-        <p className="font-semibold">
+        <p className="font-semibold truncate">
           {user.name ?? "Usuário"}
         </p>
         <p className="text-xs text-neutral-500 truncate">
@@ -33,33 +29,28 @@ export default function Sidebar({ user }: SidebarProps) {
 
       {/* Nav */}
       <nav className="flex-1 p-4 space-y-1 text-sm">
-        <SidebarLink
-          href="/dashboard"
-          label="Dashboard"
-          icon={<LayoutDashboard size={16} />}
-          active={pathname === "/dashboard"}
-        />
+        {SidebarNav.map(({ label, href, icon: Icon, adminOnly }) => {
+          if (adminOnly && !isAdmin) return null;
 
-        <SidebarLink
-          href="/dashboard/orders"
-          label="Pedidos"
-          icon={<ShoppingCart size={16} />}
-          active={pathname.startsWith("/dashboard/orders")}
-        />
+          const active =
+            pathname === href || pathname.startsWith(`${href}/`);
 
-        <SidebarLink
-          href="/dashboard/payments"
-          label="Pagamentos"
-          icon={<CreditCard size={16} />}
-          active={pathname.startsWith("/dashboard/payments")}
-        />
-
-        <SidebarLink
-          href="/dashboard/profile"
-          label="Perfil"
-          icon={<User size={16} />}
-          active={pathname.startsWith("/dashboard/profile")}
-        />
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={[
+                "flex items-center gap-3 px-3 py-2 rounded-md transition",
+                active
+                  ? "bg-neutral-100 dark:bg-neutral-800 font-medium"
+                  : "hover:bg-neutral-100 dark:hover:bg-neutral-800",
+              ].join(" ")}
+            >
+              <Icon size={16} />
+              <span>{label}</span>
+            </Link>
+          );
+        })}
       </nav>
 
       {/* Footer */}
@@ -67,32 +58,5 @@ export default function Sidebar({ user }: SidebarProps) {
         <SignOutButton />
       </div>
     </aside>
-  );
-}
-
-function SidebarLink({
-  href,
-  icon,
-  label,
-  active,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-  active: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      className={[
-        "flex items-center gap-3 px-3 py-2 rounded-md transition",
-        active
-          ? "bg-neutral-100 dark:bg-neutral-800 font-medium"
-          : "hover:bg-neutral-100 dark:hover:bg-neutral-800",
-      ].join(" ")}
-    >
-      {icon}
-      <span>{label}</span>
-    </Link>
   );
 }
