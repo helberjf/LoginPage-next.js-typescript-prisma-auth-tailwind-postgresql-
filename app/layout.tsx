@@ -1,9 +1,8 @@
+// app/layout.tsx
 import "./globals.css";
 import type { Metadata } from "next";
 import { ThemeProvider } from "next-themes";
 import { SessionProvider } from "next-auth/react";
-
-import Navbar from "@/components/Navbar";
 
 export const metadata: Metadata = {
   title: "Next Auth Starter",
@@ -24,10 +23,6 @@ export default function RootLayout({
             defaultTheme="system"
             enableSystem
           >
-            {/* Navbar global */}
-            <Navbar />
-
-            {/* Conteúdo das páginas */}
             {children}
           </ThemeProvider>
         </SessionProvider>
