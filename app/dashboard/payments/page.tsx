@@ -1,144 +1,74 @@
+import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
-import Link from "next/link";
 
-/**
- * IMPORTANTE:
- * - Autenticação já garantida pelo layout
- * - Página apenas consome dados e renderiza
- */
 export default async function PaymentsPage() {
-  /**
-   * OBS TEMPORÁRIA:
-   * Igual às outras páginas, usamos um usuário provisório.
-   * No próximo passo isso será substituído por userId vindo do layout/context.
-   */
+  const session = await auth();
 
-  const user = await prisma.user.findFirst({
-    orderBy: { createdAt: "desc" },
-    select: { id: true },
-  });
-
-  if (!user) {
-    return (
-      <p className="text-sm text-neutral-500">
-        Nenhum usuário encontrado.
-      </p>
-    );
+  if (!session?.user?.email) {
+    return null;
   }
 
   const payments = await prisma.payment.findMany({
     where: {
       order: {
-        userId: user.id,
+        user: {
+          email: session.user.email,
+        },
       },
     },
     orderBy: {
       createdAt: "desc",
     },
     include: {
-      order: {
-        select: {
-          id: true,
-        },
-      },
+      order: true,
     },
   });
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
+    <div className="space-y-6">
       <header>
         <h1 className="text-3xl font-bold">Pagamentos</h1>
-        <p className="text-neutral-500">
-          Histórico de pagamentos da sua conta
+        <p className="text-sm text-neutral-500">
+          Histórico de pagamentos realizados
         </p>
       </header>
 
-      {/* Lista */}
       {payments.length === 0 ? (
-        <div className="border rounded-md p-6 bg-white dark:bg-neutral-900">
-          <p className="text-sm text-neutral-500">
-            Nenhum pagamento encontrado.
-          </p>
-
-          <Link
-            href="/dashboard/orders"
-            className="inline-block mt-4 text-sm font-medium text-green-600 hover:underline"
-          >
-            Ver pedidos →
-          </Link>
-        </div>
+        <p className="text-sm text-neutral-500">
+          Nenhum pagamento encontrado.
+        </p>
       ) : (
         <ul className="space-y-4">
           {payments.map((payment) => (
             <li
               key={payment.id}
-              className="border rounded-lg p-4 bg-white dark:bg-neutral-900"
+              className="border rounded-lg bg-white dark:bg-neutral-900 p-4 space-y-2"
             >
-              {/* Header */}
               <div className="flex items-center justify-between">
-                <span className="font-semibold">
-                  Pagamento #{payment.id.slice(0, 8)}
+                <span className="font-medium">
+                  Pedido #{payment.orderId.slice(0, 8)}
                 </span>
 
-                <PaymentStatus status={payment.status} />
+                <span className="text-sm text-neutral-500">
+                  {payment.status}
+                </span>
               </div>
 
-              {/* Meta */}
-              <div className="text-sm text-neutral-500 mt-1">
+              <div className="text-sm">
+                Valor:{" "}
+                <strong>
+                  R$ {(payment.amountCents / 100).toFixed(2)}
+                </strong>
+              </div>
+
+              <div className="text-xs text-neutral-500">
+                Pago em{" "}
                 {payment.createdAt.toLocaleDateString("pt-BR")}
-              </div>
-
-              {/* Info */}
-              <div className="mt-3 text-sm space-y-1">
-                <p>
-                  Valor:{" "}
-                  <span className="font-medium">
-                    R$ {(payment.amountCents / 100).toFixed(2)}
-                  </span>
-                </p>
-
-                <p>
-                  Método:{" "}
-                  <span className="capitalize">
-                    {payment.method ?? "—"}
-                  </span>
-                </p>
-
-                <p>
-                  Pedido:{" "}
-                  <Link
-                    href={`/dashboard/orders/${payment.order.id}`}
-                    className="text-green-600 hover:underline"
-                  >
-                    #{payment.order.id.slice(0, 8)}
-                  </Link>
-                </p>
               </div>
             </li>
           ))}
         </ul>
       )}
     </div>
-  );
-}
-
-/* Status visual de pagamento */
-function PaymentStatus({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    PAID: "bg-green-100 text-green-700",
-    PENDING: "bg-yellow-100 text-yellow-700",
-    FAILED: "bg-red-100 text-red-700",
-    CANCELLED: "bg-neutral-200 text-neutral-700",
-  };
-
-  return (
-    <span
-      className={`text-xs px-2 py-1 rounded-full font-medium ${
-        styles[status] ?? "bg-neutral-100 text-neutral-700"
-      }`}
-    >
-      {status}
-    </span>
   );
 }

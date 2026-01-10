@@ -3,6 +3,11 @@
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
+type CheckoutResponse = {
+  redirectUrl: string;
+  error?: string;
+};
+
 export default function GuestCheckoutPage() {
   const searchParams = useSearchParams();
   const productId = searchParams.get("productId");
@@ -19,10 +24,10 @@ export default function GuestCheckoutPage() {
 
     const payload = {
       productId,
-      name: formData.get("name"),
-      email: formData.get("email"),
-      cpf: formData.get("cpf"),
-      phone: formData.get("phone"),
+      name: String(formData.get("name")),
+      email: String(formData.get("email")),
+      cpf: formData.get("cpf") ? String(formData.get("cpf")) : null,
+      phone: formData.get("phone") ? String(formData.get("phone")) : null,
     };
 
     try {
@@ -32,16 +37,20 @@ export default function GuestCheckoutPage() {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      const data: CheckoutResponse = await res.json();
 
-      if (!res.ok) {
+      if (!res.ok || !data.redirectUrl) {
         throw new Error(data.error ?? "Erro ao iniciar pagamento");
       }
 
-      // Redireciona para o Mercado Pago
+      // Redireciona para o Mercado Pago (Checkout Pro)
       window.location.href = data.redirectUrl;
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Erro inesperado ao iniciar o pagamento.");
+      }
       setLoading(false);
     }
   }
