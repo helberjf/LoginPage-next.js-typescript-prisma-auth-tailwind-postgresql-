@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import ThemeSwitcher from "@/components/themeSwitcher";
 
 export default function Navbar() {
   const { data: session } = useSession();
