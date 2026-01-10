@@ -1,3 +1,5 @@
+// components\SidebarNav.tsx
+"use client";
 import {
   LayoutDashboard,
   ShoppingCart,
