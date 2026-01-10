@@ -15,7 +15,7 @@ export default function Navbar() {
           href="/"
           className="font-semibold text-lg hover:opacity-80"
         >
-          Sistema
+          Sua loja
         </Link>
 
         {/* Nav actions */}
@@ -43,16 +43,8 @@ export default function Navbar() {
                 Entrar
               </Link>
 
-              <Link
-                href="/register"
-                className="px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700"
-              >
-                Criar conta
-              </Link>
             </>
           )}
-
-          <ThemeSwitcher />
         </nav>
       </div>
     </header>

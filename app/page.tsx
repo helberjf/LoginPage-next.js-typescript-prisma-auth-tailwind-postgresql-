@@ -9,100 +9,97 @@ import {
   Package,
   ShoppingCart,
   LogIn,
-  UserPlus,
 } from "lucide-react";
 
 import { FaGoogle } from "react-icons/fa";
-
 import ThemeSwitcher from "@/components/themeSwitcher";
 
 export default function Home() {
   const { data: session } = useSession();
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-4 py-12">
-      <section className="w-full max-w-md sm:max-w-lg md:max-w-xl">
-        <div className="relative overflow-hidden rounded-3xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-xl p-8 sm:p-10 space-y-10">
+    <main className="flex items-center justify-center px-4 py-10">
+      <section className="w-full max-w-md">
+        <div className="relative overflow-hidden rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-lg p-6 space-y-6">
 
           {/* Header */}
-          <header className="space-y-4 text-center">
+          <header className="space-y-3 text-center">
             <div className="flex justify-center">
-              <div className="p-4 rounded-2xl bg-blue-600/10 text-blue-600 dark:text-blue-400">
-                <Package size={32} />
+              <div className="p-3 rounded-xl bg-blue-600/10 text-blue-600 dark:text-blue-400">
+                <Package size={26} />
               </div>
             </div>
 
-            <h1 className="text-3xl sm:text-4xl font-bold text-neutral-900 dark:text-neutral-100">
+            <h1 className="text-2xl sm:text-3xl font-semibold text-neutral-900 dark:text-neutral-100">
               Sistema de Produtos
             </h1>
 
-            <p className="text-neutral-600 dark:text-neutral-400 text-sm sm:text-base">
-              Autenticação, pedidos e pagamentos em uma plataforma moderna
-              construída com Next.js, Auth.js, Prisma e PostgreSQL.
+            <p className="text-neutral-600 dark:text-neutral-400 text-sm">
+              Autenticação, pedidos e pagamentos em uma plataforma moderna.
             </p>
           </header>
 
           {/* Features */}
-          <ul className="space-y-3 text-sm sm:text-base">
-            <li className="flex items-center gap-3 text-neutral-700 dark:text-neutral-300">
-              <ShoppingCart size={18} className="text-green-600" />
-              Compra e gerenciamento de pedidos
+          <ul className="space-y-2 text-sm">
+            <li className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
+              <ShoppingCart size={16} className="text-green-600" />
+              Compra e pedidos online
             </li>
 
-            <li className="flex items-center gap-3 text-neutral-700 dark:text-neutral-300">
-              <LayoutDashboard size={18} className="text-purple-600" />
-              Dashboard pessoal com histórico
+            <li className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
+              <LayoutDashboard size={16} className="text-purple-600" />
+              Dashboard com histórico
             </li>
 
-            <li className="flex items-center gap-3 text-neutral-700 dark:text-neutral-300">
-              <LogIn size={18} className="text-blue-600" />
-              Login seguro com Google ou senha
+            <li className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
+              <LogIn size={16} className="text-blue-600" />
+              Login seguro
             </li>
           </ul>
 
           {/* CTA */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
+            <Link
+              href="/products"
+              className="flex items-center justify-center gap-2 rounded-lg border border-neutral-300 dark:border-neutral-700 px-4 py-3 text-sm font-medium hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+            >
+              <Package size={16} />
+              Ver produtos
+            </Link>
+
             {session ? (
               <Link
                 href="/dashboard"
-                className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-4 text-white font-medium hover:bg-green-700 transition"
+                className="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-3 text-sm font-medium text-white hover:bg-green-700 transition"
               >
-                <LayoutDashboard size={18} />
+                <LayoutDashboard size={16} />
                 Ir para o Dashboard
               </Link>
             ) : (
               <>
-                {/* Google */}
                 <button
-                  onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-                  className="flex items-center justify-center gap-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-6 py-4 text-neutral-800 dark:text-neutral-100 font-medium hover:bg-neutral-100 dark:hover:bg-neutral-700 transition"
+                  onClick={() =>
+                    signIn("google", { callbackUrl: "/dashboard" })
+                  }
+                  className="flex items-center justify-center gap-3 rounded-lg border border-neutral-300 dark:border-neutral-700 px-4 py-3 text-sm font-medium hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
                 >
-                  <FaGoogle className="text-[#DB4437]" size={18} />
+                  <FaGoogle className="text-[#DB4437]" size={16} />
                   Entrar com Google
                 </button>
 
-                {/* Email / Password */}
                 <Link
                   href="/login"
-                  className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-4 text-white font-medium hover:bg-blue-700 transition"
+                  className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white hover:bg-blue-700 transition"
                 >
-                  <LogIn size={18} />
+                  <LogIn size={16} />
                   Entrar com email
-                </Link>
-
-                <Link
-                  href="/register"
-                  className="flex items-center justify-center gap-2 rounded-xl border border-neutral-300 dark:border-neutral-700 px-6 py-4 font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-                >
-                  <UserPlus size={18} />
-                  Criar conta
                 </Link>
               </>
             )}
           </div>
 
           {/* Footer */}
-          <footer className="flex items-center justify-between pt-6 border-t border-neutral-200 dark:border-neutral-800 text-xs sm:text-sm text-neutral-500">
+          <footer className="flex items-center justify-between pt-4 border-t border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500">
             <span>
               {session
                 ? `Logado como ${session.user?.email}`

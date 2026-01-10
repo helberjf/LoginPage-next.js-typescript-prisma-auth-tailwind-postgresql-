@@ -1,8 +1,6 @@
-// app/layout.tsx
 import "./globals.css";
 import type { Metadata } from "next";
-import { ThemeProvider } from "next-themes";
-import { SessionProvider } from "next-auth/react";
+import Providers from "@/components/Providers";
 import Navbar from "@/components/Navbar";
 
 export const metadata: Metadata = {
@@ -18,18 +16,11 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
-        <SessionProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-          >
-            {/* Navbar global (home, products, login, etc) */}
-            <Navbar />
-
-            {children}
-          </ThemeProvider>
-        </SessionProvider>
+        <Providers>
+          {/* Navbar COMPLETO, sem reduzir nada */}
+          <Navbar />
+          {children}
+        </Providers>
       </body>
     </html>
   );
