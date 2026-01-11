@@ -1,3 +1,4 @@
+// app/products/page.tsx
 import prisma from "@/lib/prisma";
 import Link from "next/link";
 import { auth } from "@/auth";

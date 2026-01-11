@@ -1,5 +1,5 @@
-// components\SidebarNav.tsx
 "use client";
+
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -17,10 +17,6 @@ export type SidebarItem = {
   adminOnly?: boolean;
 };
 
-/**
- * Fonte única de verdade da navegação
- * Desktop e Mobile usam ESTE arquivo
- */
 export const SidebarNav: SidebarItem[] = [
   // CLIENTE
   {
@@ -30,7 +26,7 @@ export const SidebarNav: SidebarItem[] = [
   },
   {
     label: "Produtos",
-    href: "/products", // catálogo público / comparação
+    href: "/products",
     icon: Boxes,
   },
   {

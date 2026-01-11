@@ -25,7 +25,7 @@ export default async function DashboardLayout({
 
       {/* Main area */}
       <div className="flex flex-col flex-1">
-        <header className="h-14 shrink-0 border-b bg-white dark:bg-neutral-900 px-6 flex items-center justify-between">
+        <header className="h-14 shrink-0 border-b bg-white dark:bg-neutral-900 pl-16 pr-6 md:px-6 flex items-center justify-between">
           <div className="flex flex-col leading-tight">
             <span className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
               {session.user.name ?? "Usuário"}
