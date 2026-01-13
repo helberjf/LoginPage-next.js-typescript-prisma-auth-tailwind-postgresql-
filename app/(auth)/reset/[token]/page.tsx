@@ -55,7 +55,7 @@ export default function ResetPage({ params }: { params: { token: string } }) {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-800 via-blue-800 to-slate-800 p-4">
+    <main className="min-h-screen flex items-center justify-center bg-linear-to-br from-slate-800 via-blue-800 to-slate-800 p-4">
       <div className="w-full max-w-xs mx-auto">
         <Link 
           href="/login" 

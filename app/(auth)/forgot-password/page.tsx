@@ -1,6 +1,6 @@
 "use client";
+
 import { useState } from "react";
-import { ArrowLeft, Mail, CheckCircle } from "lucide-react";
 import Link from "next/link";
 
 export default function ForgotPasswordPage() {
@@ -26,7 +26,7 @@ export default function ForgotPasswordPage() {
       } else {
         setError("Erro ao enviar email. Tente novamente.");
       }
-    } catch (err) {
+    } catch {
       setError("Erro ao enviar email. Tente novamente.");
     } finally {
       setLoading(false);
@@ -34,61 +34,66 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-linear-to-br from-slate-800 via-blue-800 to-slate-800 p-4">
-      <div className="w-full max-w-xs mx-auto">
-        <Link 
-          href="/login" 
-          className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-4 text-sm font-medium transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Voltar para login
-        </Link>
-        <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/10">
-          <h1 className="text-2xl font-extrabold text-white text-center mb-2">
-            Esqueci minha senha
-          </h1>
-          <p className="text-sm text-gray-400 text-center mb-6">
-            Digite seu email para receber um link de recuperação
+    <main className="min-h-screen bg-neutral-50 dark:bg-neutral-950 p-6 flex items-center justify-center">
+      <div className="w-full max-w-md space-y-6">
+        {/* Header */}
+        <header className="space-y-2 text-center">
+          <h1 className="text-3xl font-bold">Recuperar senha</h1>
+          <p className="text-neutral-500 text-sm">
+            Informe seu email para receber o link de redefinição
           </p>
+        </header>
 
+        {/* Card */}
+        <div className="border rounded-xl bg-white dark:bg-neutral-900 p-6 space-y-5">
           {sent ? (
-            <div className="text-center py-4">
-              <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-4" />
-              <p className="text-white mb-2">Email enviado!</p>
-              <p className="text-sm text-gray-400">
-                Se o email existir, você receberá um link para redefinir sua senha.
+            <div className="text-center space-y-2">
+              <p className="font-semibold text-green-600">
+                Email enviado com sucesso
+              </p>
+              <p className="text-sm text-neutral-500">
+                Se o email existir, você receberá as instruções em instantes.
               </p>
             </div>
           ) : (
             <form onSubmit={submit} className="space-y-4">
-              <div className="flex flex-col gap-2">
-                <label className="flex items-center gap-2 text-sm font-semibold text-white">
-                  <Mail className="w-4 h-4" />
-                  Email
-                </label>
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Email</label>
                 <input
                   type="email"
                   required
                   placeholder="seu@email.com"
-                  className="rounded-xl border-none bg-slate-700/50 text-white px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                  className="w-full rounded-md border px-3 py-2 text-sm bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-600"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
+
               {error && (
-                <div className="text-red-400 text-xs text-center bg-red-500/10 border border-red-500/20 rounded-lg p-2">
+                <div className="text-sm text-red-600 border border-red-200 bg-red-50 dark:bg-red-950/30 rounded-md p-2">
                   {error}
                 </div>
               )}
-              <button 
+
+              <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-xl bg-blue-600 text-white font-bold py-2 text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
               >
                 {loading ? "Enviando..." : "Enviar link"}
               </button>
             </form>
           )}
+        </div>
+
+        {/* Footer links */}
+        <div className="text-center text-sm">
+          <Link
+            href="/login"
+            className="text-neutral-600 hover:underline"
+          >
+            Voltar para login
+          </Link>
         </div>
       </div>
     </main>

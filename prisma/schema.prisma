@@ -38,6 +38,11 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum VerificationTokenType {
+  RESET_PASSWORD
+  VERIFY_EMAIL
+}
+
 ////////////////////
 // USER (SINGLE-TENANT)
 // One deployment = one company
@@ -218,6 +223,7 @@ model VerificationToken {
   identifier String
   token      String   @unique
   expires    DateTime
+  type       VerificationTokenType
 
   @@unique([identifier, token])
 }
