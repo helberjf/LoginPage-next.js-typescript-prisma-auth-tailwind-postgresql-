@@ -1,14 +1,24 @@
 import formData from "form-data";
 import Mailgun from "mailgun.js";
 
+if (!process.env.MAILGUN_API_KEY) {
+  throw new Error("MAILGUN_API_KEY not set");
+}
+
+if (!process.env.MAILGUN_DOMAIN) {
+  throw new Error("MAILGUN_DOMAIN not set");
+}
+
+if (!process.env.MAILGUN_FROM) {
+  throw new Error("MAILGUN_FROM not set");
+}
+
 const mg = new Mailgun(formData).client({
   username: "api",
-  key: process.env.MAILGUN_API_KEY!,
+  key: process.env.MAILGUN_API_KEY,
+  url: process.env.MAILGUN_API_BASE_URL ?? "https://api.eu.mailgun.net",
 });
 
-/**
- * Envia email usando Mailgun
- */
 export async function sendEmail({
   to,
   subject,

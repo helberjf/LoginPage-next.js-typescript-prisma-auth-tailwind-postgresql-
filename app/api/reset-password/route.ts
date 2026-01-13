@@ -4,7 +4,9 @@ import bcrypt from "bcryptjs";
 
 export async function POST(req: Request) {
   try {
-    const { token, password } = await req.json();
+    const body = await req.json();
+    const token = String(body?.token || "").trim();
+    const password = String(body?.password || "");
 
     if (!token || !password) {
       return NextResponse.json(
@@ -13,7 +15,7 @@ export async function POST(req: Request) {
       );
     }
 
-    if (typeof password !== "string" || password.length < 6) {
+    if (password.length < 6) {
       return NextResponse.json(
         { error: "Senha deve ter ao menos 6 caracteres" },
         { status: 400 }
@@ -53,11 +55,9 @@ export async function POST(req: Request) {
         where: { id: user.id },
         data: { password: hashedPassword },
       }),
-
       prisma.verificationToken.delete({
         where: { token },
       }),
-
       prisma.session.deleteMany({
         where: { userId: user.id },
       }),
