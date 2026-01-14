@@ -81,7 +81,8 @@ export async function POST(req: Request) {
 
   // 7️⃣ Enviar email
   const resetUrl =
-    `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${rawToken}`;
+    `${process.env.NEXT_PUBLIC_APP_URL}/reset/${rawToken}?email=${encodeURIComponent(email)}`;
+
 
   await sendEmail({
     to: email,
@@ -93,6 +94,7 @@ export async function POST(req: Request) {
       </p>
       <p>Este link expira em 30 minutos.</p>
     `,
+  
   });
 
   return NextResponse.json({ ok: true });
