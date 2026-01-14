@@ -121,13 +121,7 @@ export default function LoginForm() {
         <button
           type="submit"
           disabled={loading || googleLoading}
-          className="
-            w-full rounded-md bg-blue-600 text-white
-            text-sm py-1.5
-            hover:bg-blue-700
-            disabled:opacity-50
-            transition-colors
-          "
+          className="w-full rounded-md bg-blue-600 text-white text-sm py-1.5 hover:bg-blue-700 disabled:opacity-50 transition-colors"
         >
           {loading ? "Entrando..." : "Entrar"}
         </button>
@@ -153,12 +147,7 @@ export default function LoginForm() {
       >
         {googleLoading ? (
           <span
-            className="
-              w-4 h-4 rounded-full border-2
-              border-neutral-300 border-t-neutral-600
-              dark:border-neutral-600 dark:border-t-neutral-200
-              animate-spin
-            "
+            className="w-4 h-4 rounded-full border-2 border-neutral-300 border-t-neutral-600 dark:border-neutral-600 dark:border-t-neutral-200 animate-spin"
           />
         ) : (
           <FcGoogle className="text-lg" />

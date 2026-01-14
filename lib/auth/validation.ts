@@ -49,16 +49,51 @@ export const loginSchema = z.object({
 
 export const registerSchema = z
   .object({
-    name: nameSchema,              // ✅ único campo de nome
+    name: nameSchema,
     email: emailSchema,
+
     password: passwordSchema,
     confirm: confirmPasswordSchema,
-    cpf: z.string().optional(),    // opcional, alinhado ao Prisma
+
+    cpf: z.string().optional(),
+
+    phoneCountry: z.enum(["BR", "US", "OTHER"]),
+
+    phone: z
+      .string()
+      .regex(/^\+\d{8,15}$/, "Invalid phone number"),
+
+    birthDate: z
+      .string()
+      .min(1, "Birth date is required")
+      .refine(val => !Number.isNaN(Date.parse(val)), "Invalid birth date"),
+
+    gender: z.enum(["MALE", "FEMALE", "OTHER"]),
   })
   .refine(
-    (data) => data.password === data.confirm,
+    data => data.password === data.confirm,
     matchPasswords("password", "confirm")
+  )
+  .refine(
+    data => {
+      const birth = new Date(data.birthDate);
+      const today = new Date();
+      let age = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+      return age >= 18;
+    },
+    { message: "You must be at least 18 years old", path: ["birthDate"] }
   );
+
+/* =========================
+   Types
+========================= */
+
+export type LoginInput = z.infer<typeof loginSchema>;
+export type RegisterInput = z.infer<typeof registerSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 export const forgotPasswordSchema = z.object({
   email: emailSchema,
@@ -70,15 +105,7 @@ export const resetPasswordSchema = z
     confirm: confirmPasswordSchema,
   })
   .refine(
-    (data) => data.password === data.confirm,
+    data => data.password === data.confirm,
     matchPasswords("password", "confirm")
   );
 
-/* =========================
-   Types
-========================= */
-
-export type LoginInput = z.infer<typeof loginSchema>;
-export type RegisterInput = z.infer<typeof registerSchema>;
-export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
-export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
