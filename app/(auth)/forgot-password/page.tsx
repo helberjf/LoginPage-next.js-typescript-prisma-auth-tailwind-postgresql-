@@ -1,3 +1,4 @@
+// app/(auth)/forgot-password/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -9,8 +10,14 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
+    if (!email) {
+      setError("Informe um email válido.");
+      return;
+    }
+
     setError("");
     setLoading(true);
 
@@ -21,13 +28,15 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({ email }),
       });
 
+      // 🔒 Sempre tratar como sucesso (anti-enumeração)
       if (res.ok) {
         setSent(true);
       } else {
-        setError("Erro ao enviar email. Tente novamente.");
+        // erro real (ex: 500)
+        setError("Erro ao processar solicitação. Tente novamente.");
       }
     } catch {
-      setError("Erro ao enviar email. Tente novamente.");
+      setError("Erro de conexão. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -48,24 +57,33 @@ export default function ForgotPasswordPage() {
         <div className="border rounded-xl bg-white dark:bg-neutral-900 p-6 space-y-5">
           {sent ? (
             <div className="text-center space-y-2">
-              <p className="font-semibold text-green-600">
-                Email enviado com sucesso
+              <p className="font-medium text-green-600">
+                Solicitação enviada
               </p>
               <p className="text-sm text-neutral-500">
-                Se o email existir, você receberá as instruções em instantes.
+                Se este email estiver cadastrado, você receberá as instruções
+                para redefinir sua senha em alguns instantes.
+              </p>
+              <p className="text-xs text-neutral-400">
+                Verifique também a caixa de spam.
               </p>
             </div>
           ) : (
             <form onSubmit={submit} className="space-y-4">
               <div className="space-y-1">
-                <label className="text-sm font-medium">Email</label>
+                <label className="text-sm font-medium" htmlFor="email">
+                  Email
+                </label>
                 <input
+                  id="email"
                   type="email"
                   required
+                  autoComplete="email"
                   placeholder="seu@email.com"
                   className="w-full rounded-md border px-3 py-2 text-sm bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-600"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
                 />
               </div>
 
@@ -86,7 +104,7 @@ export default function ForgotPasswordPage() {
           )}
         </div>
 
-        {/* Footer links */}
+        {/* Footer */}
         <div className="text-center text-sm">
           <Link
             href="/login"
