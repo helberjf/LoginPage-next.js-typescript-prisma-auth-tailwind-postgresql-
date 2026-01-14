@@ -1,4 +1,3 @@
-// app/api/register/route.ts
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
@@ -10,22 +9,26 @@ export async function POST(req: Request) {
     const body = await req.json();
     const data = registerSchema.parse(body);
 
-    // Normaliza email
     const email = data.email.toLowerCase();
 
     // Verifica se o email já existe
-    const exists = await prisma.user.findUnique({
+    const existingUser = await prisma.user.findUnique({
       where: { email },
+      include: {
+        accounts: true,
+      },
     });
 
-    if (exists) {
-      const hasPassword = !!exists.password;
+    if (existingUser) {
+      const hasCredentials = existingUser.accounts.some(
+        acc => acc.provider === "credentials"
+      );
 
       return NextResponse.json(
         {
-          error: hasPassword
+          error: hasCredentials
             ? "Email já cadastrado"
-            : "Este email está vinculado a uma conta do Google. Faça login com Google.",
+            : "Este email está vinculado a uma conta social. Faça login com o provedor correspondente.",
         },
         { status: 409 }
       );
@@ -34,15 +37,36 @@ export async function POST(req: Request) {
     // Hash da senha
     const passwordHash = await bcrypt.hash(data.password, 10);
 
-    // Cria usuário (SEM first/last name)
-    await prisma.user.create({
-      data: {
-        name: data.name, // <-- CORRETO
-        email,
-        password: passwordHash,
-        cpf: data.cpf ?? null,
-        role: "CUSTOMER",
-      },
+    await prisma.$transaction(async tx => {
+      const user = await tx.user.create({
+        data: {
+          name: data.name,
+          email,
+          role: "CUSTOMER",
+          status: "ACTIVE",
+        },
+      });
+
+      // Perfil (dados pessoais)
+      await tx.userProfile.create({
+        data: {
+          userId: user.id,
+          birthDate: data.birthDate ? new Date(data.birthDate) : null,
+          // Se não vier, o Prisma aplica default OTHER
+          ...(data.gender ? { gender: data.gender } : {}),
+        },
+      });
+
+      // Conta local (credentials)
+      await tx.account.create({
+        data: {
+          userId: user.id,
+          type: "credentials",
+          provider: "credentials",
+          providerAccountId: user.id,
+          access_token: passwordHash,
+        },
+      });
     });
 
     return NextResponse.json(

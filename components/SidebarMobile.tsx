@@ -22,7 +22,7 @@ export default function SidebarMobile({ user }: SidebarMobileProps) {
       {!open && (
         <button
           aria-label="Abrir menu"
-          className="md:hidden fixed top-4 left-4 z-40 p-2 rounded-md bg-white dark:bg-neutral-800 shadow"
+                    className="md:hidden fixed top-4 left-4 z-40 p-2 rounded-md bg-white dark:bg-neutral-800 shadow"
           onClick={() => setOpen(true)}
         >
           <Menu size={20} />

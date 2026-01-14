@@ -16,6 +16,18 @@ enum Role {
   CUSTOMER
 }
 
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+  DELETED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
 enum OrderStatus {
   PENDING
   PAID
@@ -44,37 +56,83 @@ enum VerificationTokenType {
 }
 
 ////////////////////
-// USER (SINGLE-TENANT)
-// One deployment = one company
+// USER (IDENTITY / AUTH)
 ////////////////////
 
 model User {
-  id        String   @id @default(cuid())
+  id              String     @id @default(cuid())
 
-  // Auth.js standard fields
-  name      String?
-  email     String?  @unique
-  image     String?
-  emailVerified DateTime?
+  name            String?
+  email           String?    @unique
+  image           String?
+  emailVerified   DateTime?
 
-  // Local auth / business
-  password  String?
-  cpf       String?
-  role      Role     @default(CUSTOMER)
+  role            Role       @default(CUSTOMER)
+  status          UserStatus @default(ACTIVE)
 
-  // Relations
-  orders    Order[]
-  accounts  Account[]
-  sessions  Session[]
+  accounts        Account[]
+  sessions        Session[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
+  profile         UserProfile?
+  addresses       Address[]
+  orders          Order[]
+  userEvents      UserEvent[]
+
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
   @@index([email])
-  @@index([cpf])
+  @@index([status])
 }
 
+
+////////////////////
+// USER PROFILE (PERSONAL DATA)
+////////////////////
+
+model UserProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+
+  cpf         String?  @unique
+  phone       String?
+
+  birthDate   DateTime?
+  gender      Gender   @default(OTHER)
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+
+////////////////////
+// ADDRESS
+////////////////////
+
+model Address {
+  id          String @id @default(cuid())
+  userId      String
+
+  street      String
+  number      String
+  complement  String?
+  district    String
+  city        String
+  state       String
+  zipCode     String
+  country     String @default("BR")
+
+  isDefault   Boolean @default(false)
+
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
 
 ////////////////////
 // PRODUCT
@@ -100,16 +158,16 @@ model Product {
 }
 
 ////////////////////
-// PRODUCT IMAGES (MAX 3 PER PRODUCT)
+// PRODUCT IMAGES
 ////////////////////
 
 model ProductImage {
   id        String @id @default(cuid())
   productId String
   url       String
-  position  Int   // 1, 2, 3
+  position  Int
 
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([productId, position])
 }
@@ -119,26 +177,26 @@ model ProductImage {
 ////////////////////
 
 model Order {
-  id            String       @id @default(cuid())
+  id            String      @id @default(cuid())
 
   userId        String?
-  user          User?        @relation(fields: [userId], references: [id])
+  user          User?       @relation(fields: [userId], references: [id])
 
-  // Guest checkout fields
+  // Guest checkout
   guestFullName String?
   guestEmail    String?
   guestCpf      String?
   guestPhone    String?
 
-  status        OrderStatus  @default(PENDING)
+  status        OrderStatus @default(PENDING)
   totalCents    Int
-  currency      String       @default("BRL")
+  currency      String      @default("BRL")
 
   items         OrderItem[]
   payments      Payment[]
 
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
   deletedAt     DateTime?
 
   @@index([status])
@@ -159,8 +217,8 @@ model OrderItem {
   quantity    Int
   priceCents  Int
 
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product @relation(fields: [productId], references: [id])
 }
 
 ////////////////////
@@ -192,7 +250,7 @@ model Payment {
 ////////////////////
 
 model Account {
-  id                String  @id @default(cuid())
+  id                String @id @default(cuid())
   userId            String
   type              String
   provider          String
@@ -205,7 +263,7 @@ model Account {
   scope             String?
   id_token          String?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -216,7 +274,7 @@ model Session {
   userId       String
   expires      DateTime
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
@@ -229,6 +287,24 @@ model VerificationToken {
   @@index([identifier, type])
 }
 
+////////////////////
+// USER EVENTS (ANALYTICS)
+////////////////////
+
+model UserEvent {
+  id        String   @id @default(cuid())
+  userId    String?
+
+  event     String
+  metadata  Json?
+
+  createdAt DateTime @default(now())
+
+  user      User? @relation(fields: [userId], references: [id])
+
+  @@index([event])
+  @@index([createdAt])
+}
 
 ////////////////////
 // WEBHOOK EVENTS (IDEMPOTENCY)

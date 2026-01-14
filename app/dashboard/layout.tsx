@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 
 import Sidebar from "@/components/Sidebar";
 import SidebarMobile from "@/components/SidebarMobile";
-import SignOutButton from "@/components/SignOutButton";
 
 export default async function DashboardLayout({
   children,
@@ -34,8 +33,6 @@ export default async function DashboardLayout({
               Dashboard
             </span>
           </div>
-
-          <SignOutButton />
         </header>
 
         <main className="flex-1 overflow-y-auto">

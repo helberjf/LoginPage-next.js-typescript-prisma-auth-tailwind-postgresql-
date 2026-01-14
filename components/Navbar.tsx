@@ -13,8 +13,21 @@ export default function Navbar() {
   return (
     <header className="w-full border-b bg-white dark:bg-neutral-900">
       <div className="max-w-7xl mx-auto h-14 px-6 flex items-center justify-between">
-        {/* Logo / Home */}
-        <Link href="/" className="font-semibold text-lg hover:opacity-80">
+        {/* Logo / Home (estilo botão) */}
+        <Link
+          href="/"
+          className="
+            px-3 py-1.5 rounded-lg
+            border border-neutral-300
+            text-sm font-semibold
+            text-neutral-800
+            hover:bg-neutral-100
+            transition-colors
+            dark:border-neutral-700
+            dark:text-neutral-100
+            dark:hover:bg-neutral-800
+          "
+        >
           Sua loja
         </Link>
 
@@ -30,8 +43,13 @@ export default function Navbar() {
               {!isDashboard && (
                 <Link
                   href="/dashboard"
-                  className="px-3 py-1.5 rounded-md bg-neutral-900 text-white hover:bg-neutral-800
-                             dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
+                  className="
+                    px-3 py-1.5 rounded-md
+                    bg-neutral-900 text-white
+                    hover:bg-neutral-800
+                    dark:bg-neutral-100 dark:text-neutral-900
+                    dark:hover:bg-neutral-200
+                  "
                 >
                   Dashboard
                 </Link>
@@ -39,14 +57,25 @@ export default function Navbar() {
 
               <button
                 onClick={() => signOut({ callbackUrl: "/" })}
-                className="px-3 py-1.5 rounded-md border border-red-300 text-red-600 hover:bg-red-50
-                           dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                className="
+                  px-3 py-1.5 rounded-md
+                  border border-red-300
+                  text-red-600
+                  hover:bg-red-50
+                  dark:border-red-800
+                  dark:text-red-400
+                  dark:hover:bg-red-900/20
+                "
               >
                 Sair
               </button>
             </>
           ) : (
-            <Link href="/login" className="hover:underline">
+            /* Entrar só no desktop */
+            <Link
+              href="/login"
+              className="hidden md:inline hover:underline"
+            >
               Entrar
             </Link>
           )}

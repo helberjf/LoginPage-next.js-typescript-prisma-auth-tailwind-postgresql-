@@ -1,4 +1,3 @@
-// app\(auth)\login\LoginForm.tsx
 "use client";
 
 import { useState } from "react";
@@ -6,16 +5,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { FcGoogle } from "react-icons/fc";
 
 import { loginSchema, LoginInput } from "@/lib/auth/validation";
-
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 export default function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+
   const callbackUrl =
     searchParams.get("callbackUrl") && searchParams.get("callbackUrl") !== "/"
       ? searchParams.get("callbackUrl")!
@@ -23,6 +20,7 @@ export default function LoginForm() {
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const {
     register,
@@ -33,100 +31,141 @@ export default function LoginForm() {
   });
 
   async function onSubmit(data: LoginInput) {
-  if (loading) return;
+    if (loading || googleLoading) return;
 
-  setLoading(true);
-  setError(null);
+    setLoading(true);
+    setError(null);
 
-  const result = await signIn("credentials", {
-    redirect: false,
-    email: data.email,
-    password: data.password,
-    callbackUrl: "/dashboard",
-  });
+    const result = await signIn("credentials", {
+      redirect: false,
+      email: data.email,
+      password: data.password,
+      callbackUrl,
+    });
 
-  setLoading(false);
+    setLoading(false);
 
-  if (!result) {
-    setError("Unable to connect. Try again.");
-    return;
+    if (!result || result.error) {
+      setError("Email ou senha inválidos");
+      return;
+    }
+
+    router.push(callbackUrl);
   }
 
-  if (result.error) {
-    setError("Invalid email or password");
-    return;
+  function handleGoogleLogin() {
+    if (loading || googleLoading) return;
+    setGoogleLoading(true);
+    signIn("google", { callbackUrl });
   }
-
-  router.push(callbackUrl);
-}
 
   return (
-    <div className="w-full max-w-sm space-y-6">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <div className="w-full space-y-4">
+      {/* FORM */}
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
         {/* EMAIL */}
-        <div className="space-y-1">
-          <Label htmlFor="email">Email</Label>
-          <Input
+        <div className="space-y-0.5">
+          <label
+            htmlFor="email"
+            className="text-xs font-medium"
+          >
+            Email
+          </label>
+          <input
             id="email"
             type="email"
-            placeholder="you@example.com"
+            placeholder="seu@email.com"
+            autoComplete="email"
             {...register("email")}
-            disabled={loading}
+            disabled={loading || googleLoading}
+            className="w-full rounded-md border px-2.5 py-1.5 text-sm bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100 border-neutral-300 dark:border-neutral-700 disabled:opacity-60"
           />
           {errors.email && (
-            <p className="text-sm text-red-500">{errors.email.message}</p>
+            <p className="text-[11px] text-red-500">
+              {errors.email.message}
+            </p>
           )}
         </div>
 
         {/* PASSWORD */}
-        <div className="space-y-1">
-          <Label htmlFor="password">Password</Label>
-          <Input
+        <div className="space-y-0.5">
+          <label
+            htmlFor="password"
+            className="text-xs font-medium"
+          >
+            Senha
+          </label>
+          <input
             id="password"
             type="password"
+            autoComplete="current-password"
             {...register("password")}
-            disabled={loading}
+            disabled={loading || googleLoading}
+            className="w-full rounded-md border px-2.5 py-1.5 text-sm bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100 border-neutral-300 dark:border-neutral-700 disabled:opacity-60"
           />
           {errors.password && (
-            <p className="text-sm text-red-500">{errors.password.message}</p>
+            <p className="text-[11px] text-red-500">
+              {errors.password.message}
+            </p>
           )}
         </div>
 
         {/* ERROR */}
         {error && (
-          <p className="text-sm text-red-500 text-center">{error}</p>
+          <p className="text-xs text-red-500 text-center">
+            {error}
+          </p>
         )}
 
         {/* SUBMIT */}
-        <Button
+        <button
           type="submit"
-          className="w-full"
-          disabled={loading}
+          disabled={loading || googleLoading}
+          className="
+            w-full rounded-md bg-blue-600 text-white
+            text-sm py-1.5
+            hover:bg-blue-700
+            disabled:opacity-50
+            transition-colors
+          "
         >
-          {loading ? "Signing in..." : "Sign in"}
-        </Button>
+          {loading ? "Entrando..." : "Entrar"}
+        </button>
       </form>
 
       {/* DIVIDER */}
-      <div className="relative">
+      <div className="relative my-2">
         <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t" />
+          <span className="w-full border-t border-neutral-300 dark:border-neutral-700" />
         </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">
-            Or continue with
+        <div className="relative flex justify-center text-[11px] uppercase">
+          <span className="bg-white dark:bg-neutral-950 px-2 text-neutral-500">
+            ou continue com
           </span>
         </div>
       </div>
 
-      {/* GOOGLE */}
-      <Button
-        variant="outline"
-        className="w-full"
-        onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+      {/* GOOGLE BUTTON */}
+      <button
+        onClick={handleGoogleLogin}
+        disabled={loading || googleLoading}
+        className="w-full flex items-center justify-center gap-2 rounded-md border py-1.5 text-sm font-medium bg-white text-neutral-800 border-neutral-300 hover:bg-neutral-100 hover:shadow-sm dark:bg-neutral-950 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-900 disabled:opacity-60 transition-all"
       >
-        Google
-      </Button>
+        {googleLoading ? (
+          <span
+            className="
+              w-4 h-4 rounded-full border-2
+              border-neutral-300 border-t-neutral-600
+              dark:border-neutral-600 dark:border-t-neutral-200
+              animate-spin
+            "
+          />
+        ) : (
+          <FcGoogle className="text-lg" />
+        )}
+
+        {googleLoading ? "Conectando..." : "Continuar com Google"}
+      </button>
     </div>
   );
 }

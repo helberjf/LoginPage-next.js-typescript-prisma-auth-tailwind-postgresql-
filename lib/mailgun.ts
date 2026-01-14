@@ -1,5 +1,6 @@
 import formData from "form-data";
 import Mailgun from "mailgun.js";
+import "dotenv/config";
 
 if (!process.env.MAILGUN_API_KEY) {
   throw new Error("MAILGUN_API_KEY not set");
@@ -16,7 +17,7 @@ if (!process.env.MAILGUN_FROM) {
 const mg = new Mailgun(formData).client({
   username: "api",
   key: process.env.MAILGUN_API_KEY,
-  url: process.env.MAILGUN_API_BASE_URL ?? "https://api.eu.mailgun.net",
+  url: process.env.MAILGUN_API_BASE_URL ?? "https://api.mailgun.net",
 });
 
 export async function sendEmail({
@@ -30,8 +31,9 @@ export async function sendEmail({
 }) {
   return mg.messages.create(process.env.MAILGUN_DOMAIN!, {
     from: process.env.MAILGUN_FROM!,
-    to,
+    to: [to],
     subject,
     html,
   });
+
 }
