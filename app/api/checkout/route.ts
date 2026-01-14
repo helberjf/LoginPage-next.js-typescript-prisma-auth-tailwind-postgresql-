@@ -47,34 +47,41 @@ export async function POST(req: Request) {
 
   // ===== CPF =====
   if (isLogged) {
-      const user = await prisma.user.findUnique({
-        where: { id: userId! },
-        select: { cpf: true }
-      });
-  
-      if (!user?.cpf || !validateCpf(user.cpf)) {
-        return NextResponse.json(
-          { error: "CPF inválido ou não cadastrado" },
-          { status: 400 }
-        );
-      }
-    } else {
-      // 🔑 narrowing explícito
-      if (!guest) {
-        return NextResponse.json(
-          { error: "Dados de visitante obrigatórios" },
-          { status: 400 }
-        );
-      }
-  
-      if (!validateCpf(guest.cpf)) {
-        return NextResponse.json(
-          { error: "CPF do visitante inválido" },
-          { status: 400 }
-        );
-      }
+    const user = await prisma.user.findUnique({
+      where: { id: userId! },
+      select: {
+        profile: {
+          select: {
+            cpf: true,
+          },
+        },
+      },
+    });
+
+    const cpf = user?.profile?.cpf;
+
+    if (!cpf || !validateCpf(cpf)) {
+      return NextResponse.json(
+        { error: "CPF inválido ou não cadastrado" },
+        { status: 400 }
+      );
     }
-    
+  } else {
+    if (!guest) {
+      return NextResponse.json(
+        { error: "Dados de visitante obrigatórios" },
+        { status: 400 }
+      );
+    }
+
+    if (!validateCpf(guest.cpf)) {
+      return NextResponse.json(
+        { error: "CPF do visitante inválido" },
+        { status: 400 }
+      );
+    }
+  }
+
   // ===== CRIAÇÃO DO PEDIDO =====
   const order = await prisma.order.create({
     data: {
@@ -88,10 +95,10 @@ export async function POST(req: Request) {
         create: body.items.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
-          priceCents: item.priceCents
-        }))
-      }
-    }
+          priceCents: item.priceCents,
+        })),
+      },
+    },
   });
 
   return NextResponse.json({ orderId: order.id });
