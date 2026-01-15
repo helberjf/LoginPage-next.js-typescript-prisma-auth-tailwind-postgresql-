@@ -9,17 +9,26 @@ type SendEmailArgs = {
 };
 
 export async function sendEmail({ to, subject, html }: SendEmailArgs) {
+  if (!process.env.MAILGUN_API_KEY) {
+    throw new Error("MAILGUN_API_KEY not set");
+  }
+
+  if (!process.env.MAILGUN_DOMAIN) {
+    throw new Error("MAILGUN_DOMAIN not set");
+  }
+
   const mailgun = new Mailgun(FormData);
   const mg = mailgun.client({
     username: "api",
-    key: process.env.MAILGUN_API_KEY!,
-    url: process.env.MAILGUN_API_BASE_URL ?? "https://api.mailgun.net",
+    key: process.env.MAILGUN_API_KEY,
+    url: process.env.MAILGUN_API_BASE_URL || "https://api.mailgun.net",
   });
 
-  return mg.messages.create(process.env.MAILGUN_DOMAIN!, {
-    from: process.env.MAILGUN_FROM!,
-    to: [to],
-    subject,
+  return mg.messages.create(process.env.MAILGUN_DOMAIN, {
+    from: `Mailgun Sandbox <postmaster@${process.env.MAILGUN_DOMAIN}>`,
+    to: [`${to}`],
+    subject: subject || "Redefinição de senha",
+    text: "Você solicitou a redefinição de senha.",
     html,
   });
 }
