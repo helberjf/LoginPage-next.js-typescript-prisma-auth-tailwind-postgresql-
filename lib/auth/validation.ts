@@ -15,7 +15,13 @@ export const emailSchema = z
 export const nameSchema = z
   .string()
   .trim()
-  .min(2, "Name must contain at least 2 characters");
+  .refine(
+    v => {
+      const parts = v.split(/\s+/);
+      return parts.length >= 2 && parts.every(p => p.length >= 2);
+    },
+    "Please enter first and last name"
+  );
 
 export const passwordSchema = z
   .string()
@@ -28,15 +34,6 @@ export const passwordSchema = z
 const confirmPasswordSchema = z
   .string()
   .min(1, "Password confirmation is required");
-
-/* =========================
-   Helpers
-========================= */
-
-const matchPasswords = (passwordKey: string, confirmKey: string) => ({
-  message: "Passwords do not match",
-  path: [confirmKey],
-});
 
 /* =========================
    Schemas
@@ -66,46 +63,78 @@ export const registerSchema = z
     birthDate: z
       .string()
       .min(1, "Birth date is required")
-      .refine(val => !Number.isNaN(Date.parse(val)), "Invalid birth date"),
+      .refine(
+        val => !Number.isNaN(Date.parse(val)),
+        "Invalid birth date"
+      ),
 
     gender: z.enum(["MALE", "FEMALE", "OTHER"]),
+
+    /* =========================
+       ENDEREÇO
+    ========================= */
+
+    address: z
+      .object({
+        zipCode: z
+          .string()
+          .transform(v => v.replace(/\D/g, "")),
+
+        street: z.string().min(1, "Street is required"),
+        number: z.string().min(1, "Number is required"),
+        complement: z.string().optional(),
+        district: z.string().min(1, "District is required"),
+        city: z.string().min(1, "City is required"),
+        state: z.string().min(2, "State is required"),
+
+        // Mantido explícito para fácil remoção futura
+        country: z.string().default("BR"),
+      })
+      .superRefine((address, ctx) => {
+        /* =========================================================
+           🇧🇷 VALIDAÇÃO BRASIL
+        ========================================================= */
+        if (address.country === "BR") {
+          if (!/^\d{8}$/.test(address.zipCode)) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["zipCode"],
+              message: "CEP deve conter exatamente 8 números",
+            });
+          }
+
+          if (address.state.length !== 2) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["state"],
+              message: "UF deve conter 2 letras",
+            });
+          }
+        }
+
+        /* =========================================================
+           🌍 VALIDAÇÃO ESTRANGEIROS (REMOVÍVEL)
+        ========================================================= */
+        if (address.country !== "BR") {
+          if (address.zipCode.length < 3) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["zipCode"],
+              message: "ZIP code inválido",
+            });
+          }
+        }
+      }),
   })
-  .refine(
-    data => data.password === data.confirm,
-    matchPasswords("password", "confirm")
-  )
-  .refine(
-    data => {
-      const birth = new Date(data.birthDate);
-      const today = new Date();
-      let age = today.getFullYear() - birth.getFullYear();
-      const m = today.getMonth() - birth.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-      return age >= 18;
-    },
-    { message: "You must be at least 18 years old", path: ["birthDate"] }
-  );
-
-/* =========================
-   Types
-========================= */
-
-export type LoginInput = z.infer<typeof loginSchema>;
-export type RegisterInput = z.infer<typeof registerSchema>;
-export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
-export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
-
-export const forgotPasswordSchema = z.object({
-  email: emailSchema,
-});
-
-export const resetPasswordSchema = z
-  .object({
-    password: passwordSchema,
-    confirm: confirmPasswordSchema,
-  })
-  .refine(
-    data => data.password === data.confirm,
-    matchPasswords("password", "confirm")
-  );
-
+  /* =========================
+     PASSWORD MATCH
+  ========================= */
+  .superRefine((data, ctx) => {
+    if (data.password !== data.confirm) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["confirm"],
+        message: "Passwords do not match",
+      });
+    }
+  });

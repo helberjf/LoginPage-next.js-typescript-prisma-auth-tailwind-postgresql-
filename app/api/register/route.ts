@@ -35,8 +35,6 @@ function isValidCPF(cpf?: string | null) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-
-    // ✅ ÚNICA validação de telefone acontece aqui
     const data = registerSchema.parse(body);
 
     const email = data.email.toLowerCase();
@@ -48,24 +46,16 @@ export async function POST(req: Request) {
 
     const existingUser = await prisma.user.findUnique({
       where: { email },
-      include: { accounts: true },
     });
 
     if (existingUser) {
-      const hasCredentials = existingUser.accounts.some(
-        a => a.provider === "credentials"
-      );
-
       return NextResponse.json(
-        {
-          error: hasCredentials
-            ? "Email já cadastrado"
-            : "Use o provedor social correspondente.",
-        },
+        { error: "Email já cadastrado." },
         { status: 409 }
       );
     }
 
+    // 🔐 HASH DA SENHA
     const passwordHash = await bcrypt.hash(data.password, 10);
 
     await prisma.$transaction(async tx => {
@@ -73,6 +63,7 @@ export async function POST(req: Request) {
         data: {
           name: data.name,
           email,
+          password: passwordHash,
           role: "CUSTOMER",
           status: "ACTIVE",
         },
@@ -82,28 +73,37 @@ export async function POST(req: Request) {
         data: {
           userId: user.id,
           cpf: cpfNormalized,
-          phone: data.phone, // ✅ já está em E.164
+          phone: data.phone,
           birthDate: new Date(data.birthDate),
           gender: data.gender,
         },
       });
 
-      await tx.account.create({
+      // 🏠 ENDEREÇO
+      await tx.address.create({
         data: {
           userId: user.id,
-          type: "credentials",
-          provider: "credentials",
-          providerAccountId: user.id,
-          access_token: passwordHash,
+          zipCode: data.address.zipCode ?? "", // ✅ NORMALIZA
+          street: data.address.street,
+          number: data.address.number,
+          complement: data.address.complement,
+          district: data.address.district,
+          city: data.address.city,
+          state: data.address.state.toUpperCase(),
+          country: data.address.country ?? "BR",
+          isDefault: true,
         },
       });
     });
 
-    await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-verification-email`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    });
+    await fetch(
+      `${process.env.NEXT_PUBLIC_APP_URL}/api/send-verification-email`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      }
+    );
 
     return NextResponse.json(
       { message: "Usuário registrado com sucesso" },

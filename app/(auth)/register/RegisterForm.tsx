@@ -1,3 +1,4 @@
+// app/(auth)/register/RegisterForm.tsx
 "use client";
 
 import { useState } from "react";
@@ -15,7 +16,21 @@ type RegisterFormState = {
   cpf: string;
   phoneCountry: PhoneCountry;
   phone: string;
+
+  zipCode: string;
+  street: string;
+  number: string;
+  complement: string;
+  district: string;
+  city: string;
+  state: string;
 };
+
+function hasSurname(name: string) {
+  const parts = name.trim().split(/\s+/);
+  return parts.length >= 2 && parts.every(p => p.length >= 2);
+}
+
 
 function onlyDigits(v: string) {
   return v.replace(/\D/g, "");
@@ -37,9 +52,12 @@ function isValidCPF(cpf: string) {
 }
 
 function toE164(country: PhoneCountry, digits: string) {
+  if (digits.length < 7) {
+    throw new Error("Telefone deve ter no mínimo 7 dígitos.");
+  }
+
   if (country === "BR") return `+55${digits}`;
   if (country === "US") return `+1${digits}`;
-  if (digits.length < 8) throw new Error("Telefone inválido");
   return `+${digits}`;
 }
 
@@ -54,18 +72,66 @@ export default function RegisterForm() {
     cpf: "",
     phoneCountry: "BR",
     phone: "",
+    zipCode: "",
+    street: "",
+    number: "",
+    complement: "",
+    district: "",
+    city: "",
+    state: "",
   });
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [cepLoading, setCepLoading] = useState(false);
+  const [cepError, setCepError] = useState<string | null>(null);
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
+  const cepDigits = onlyDigits(form.zipCode);
+  const cepReady = cepDigits.length === 8 && !cepError;
+
+  function handleChange(
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) {
     setForm(p => ({ ...p, [e.target.name]: e.target.value }));
+  }
+
+  async function fetchCep() {
+    if (cepDigits.length !== 8) return;
+
+    setCepLoading(true);
+    setCepError(null);
+
+    try {
+      const res = await fetch(`/api/cep?cep=${cepDigits}`);
+      if (!res.ok) {
+        setCepError("CEP não encontrado");
+        return;
+      }
+
+      const data = await res.json();
+
+      setForm(p => ({
+        ...p,
+        street: data.street,
+        district: data.district,
+        city: data.city,
+        state: data.state,
+      }));
+    } catch {
+      setCepError("Erro ao buscar CEP");
+    } finally {
+      setCepLoading(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (!cepReady) {
+      setError("Informe um CEP válido.");
+      return;
+    }
 
     if (form.password !== form.confirm) {
       setError("As senhas não coincidem.");
@@ -79,20 +145,16 @@ export default function RegisterForm() {
 
     const phoneDigits = onlyDigits(form.phone);
 
-    if (form.phoneCountry === "BR" && phoneDigits.length !== 11) {
-      setError("Telefone BR deve ter 11 números (DDD + número).");
+    if (phoneDigits.length < 7) {
+      setError("Telefone deve ter no mínimo 7 dígitos.");
       return;
     }
 
-    if (form.phoneCountry === "US" && phoneDigits.length !== 10) {
-      setError("Telefone US deve ter 10 números.");
-      return;
-    }
-
-    const phoneE164 = toE164(form.phoneCountry, phoneDigits);
-
-    if (!/^\+\d{8,15}$/.test(phoneE164)) {
-      setError("Telefone inválido.");
+    let phoneE164: string;
+    try {
+      phoneE164 = toE164(form.phoneCountry, phoneDigits);
+    } catch (err: any) {
+      setError(err.message);
       return;
     }
 
@@ -109,8 +171,18 @@ export default function RegisterForm() {
           birthDate: form.birthDate,
           gender: form.gender,
           cpf: form.cpf || undefined,
-          phone: phoneE164,
           phoneCountry: form.phoneCountry,
+          phone: phoneE164,
+          address: {
+            zipCode: cepDigits,
+            street: form.street,
+            number: form.number,
+            complement: form.complement || undefined,
+            district: form.district,
+            city: form.city,
+            state: form.state,
+            country: "BR",
+          },
         }),
       });
 
@@ -128,61 +200,255 @@ export default function RegisterForm() {
     }
   }
 
-  const baseInput =
-    "w-full rounded-md border px-2.5 py-1 md:py-1.5 text-sm bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100 border-neutral-300 dark:border-neutral-700";
+  const base =
+    "w-full rounded-md border px-2 py-1 text-[12px]";
+  const input =
+    `${base} border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950`;
+  const readonly =
+    `${input} bg-neutral-100 dark:bg-neutral-900 cursor-not-allowed`;
+  const label = "text-[10px] text-neutral-600";
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-1.5 md:space-y-2">
-      <div className="space-y-0.5">
-        <label className="block text-[11px] md:text-xs font-medium">Nome completo</label>
-        <input name="name" value={form.name} onChange={handleChange} required className={baseInput} />
+    <form onSubmit={handleSubmit} className="space-y-1">
+      {/* NOME */}
+      <div className="space-y-[1px]">
+        <span className={label}>Nome completo</span>
+        <input
+          name="name"
+          placeholder="Maria da Silva"
+          value={form.name}
+          onChange={handleChange}
+          className={input}
+          required
+        />
       </div>
-      <div className="space-y-0.5">
-        <label className="block text-[11px] md:text-xs font-medium">Email</label>
-        <input name="email" type="email" value={form.email} onChange={handleChange} required className={baseInput} />
+
+      {/* EMAIL */}
+      <div className="space-y-[1px]">
+        <span className={label}>Email</span>
+        <input
+          name="email"
+          type="email"
+          placeholder="email@exemplo.com"
+          value={form.email}
+          onChange={handleChange}
+          className={input}
+          required
+        />
       </div>
-      <div className="space-y-0.5">
-        <label className="block text-[11px] md:text-xs font-medium">CPF</label>
-        <input name="cpf" value={form.cpf} onChange={handleChange} placeholder="000.000.000-00" className={baseInput} />
-      </div>
-      <div className="space-y-0.5">
-        <label className="block text-[11px] md:text-xs font-medium">Telefone</label>
-        <div className="flex gap-2">
-          <select name="phoneCountry" value={form.phoneCountry} onChange={handleChange} className="w-28 rounded-md border px-2 py-1 md:py-1.5 text-sm bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100 border-neutral-300 dark:border-neutral-700">
-            <option value="BR">BR +55</option>
-            <option value="US">US +1</option>
+
+      {/* CPF + GÊNERO */}
+      <div className="grid grid-cols-2 gap-1">
+        <div className="space-y-[1px]">
+          <span className={label}>CPF</span>
+          <input
+            name="cpf"
+            placeholder="000.000.000-00"
+            value={form.cpf}
+            onChange={handleChange}
+            className={input}
+          />
+        </div>
+
+        <div className="space-y-[1px]">
+          <span className={label}>Gênero</span>
+          <select
+            name="gender"
+            value={form.gender}
+            onChange={handleChange}
+            className={input}
+          >
+            <option value="MALE">Masculino</option>
+            <option value="FEMALE">Feminino</option>
             <option value="OTHER">Outro</option>
           </select>
-          <input name="phone" value={form.phone} onChange={handleChange} required inputMode="numeric" className={baseInput} />
         </div>
       </div>
-      <div className="space-y-0.5">
-        <label className="block text-[11px] md:text-xs font-medium">Nascimento</label>
-        <input name="birthDate" type="date" value={form.birthDate} onChange={handleChange} required className={baseInput} />
+
+      {/* TELEFONE */}
+      <div className="grid grid-cols-[64px_1fr] gap-1">
+        <div className="space-y-[1px]">
+          <span className={label}>País</span>
+          <select
+            name="phoneCountry"
+            value={form.phoneCountry}
+            onChange={handleChange}
+            className={input}
+          >
+            <option value="BR">BR</option>
+            <option value="US">US</option>
+            <option value="OTHER">OUT</option>
+          </select>
+        </div>
+
+        <div className="space-y-[1px]">
+          <span className={label}>Telefone</span>
+          <div className="flex">
+            {(form.phoneCountry === "BR" || form.phoneCountry === "US") && (
+              <span className="px-2 py-1 text-[12px] border border-r-0 rounded-l-md bg-neutral-100 dark:bg-neutral-900 text-neutral-600">
+                {form.phoneCountry === "BR" ? "+55" : "+1"}
+              </span>
+            )}
+
+            <input
+              name="phone"
+              placeholder={
+                form.phoneCountry === "OTHER"
+                  ? "+351912345678"
+                  : "Somente números"
+              }
+              value={form.phone}
+              onChange={handleChange}
+              className={`${input} ${
+                form.phoneCountry !== "OTHER" ? "rounded-l-none" : ""
+              }`}
+              required
+            />
+          </div>
+        </div>
       </div>
-      <div className="space-y-0.5">
-        <label className="block text-[11px] md:text-xs font-medium">Gênero</label>
-        <select name="gender" value={form.gender} onChange={handleChange} className={baseInput}>
-          <option value="MALE">Masculino</option>
-          <option value="FEMALE">Feminino</option>
-          <option value="OTHER">Outro</option>
-        </select>
+
+      {/* NASCIMENTO */}
+      <div className="space-y-[1px]">
+        <span className={label}>Data de nascimento</span>
+        <input
+          name="birthDate"
+          type="date"
+          value={form.birthDate}
+          onChange={handleChange}
+          className={input}
+          required
+        />
       </div>
-      <div className="space-y-0.5">
-        <label className="block text-[11px] md:text-xs font-medium">Senha</label>
-        <input name="password" type="password" value={form.password} onChange={handleChange} required className={baseInput} />
+
+      {/* CEP */}
+      <div className="space-y-[1px]">
+        <span className={label}>CEP</span>
+        <input
+          name="zipCode"
+          placeholder="00000-000"
+          value={form.zipCode}
+          onChange={handleChange}
+          onBlur={fetchCep}
+          className={input}
+          required
+        />
+
+        {cepLoading && (
+          <div className="flex items-center gap-1 text-[10px] text-neutral-500">
+            <span className="h-3 w-3 animate-spin rounded-full border-2 border-neutral-400 border-t-transparent" />
+            Buscando CEP…
+          </div>
+        )}
+
+        {cepError && (
+          <p className="text-[10px] text-red-600">{cepError}</p>
+        )}
       </div>
-      <div className="space-y-0.5">
-        <label className="block text-[11px] md:text-xs font-medium">Confirmar senha</label>
-        <input name="confirm" type="password" value={form.confirm} onChange={handleChange} required className={baseInput} />
+
+      {/* ENDEREÇO */}
+      {cepReady && (
+        <>
+          <div className="space-y-[1px]">
+            <span className={label}>Rua</span>
+            <input
+              name="street"
+              value={form.street}
+              onChange={handleChange}
+              className={input}
+              required
+            />
+          </div>
+
+          <div className="space-y-[1px]">
+            <span className={label}>Bairro</span>
+            <input value={form.district} readOnly className={readonly} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-1">
+            <div className="space-y-[1px]">
+              <span className={label}>Cidade</span>
+              <input value={form.city} readOnly className={readonly} />
+            </div>
+            <div className="space-y-[1px]">
+              <span className={label}>UF</span>
+              <input value={form.state} readOnly className={readonly} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-1">
+            <div className="space-y-[1px]">
+              <span className={label}>Número</span>
+              <input
+                name="number"
+                placeholder="123"
+                value={form.number}
+                onChange={handleChange}
+                className={input}
+                required
+              />
+            </div>
+            <div className="space-y-[1px]">
+              <span className={label}>Complemento</span>
+              <input
+                name="complement"
+                placeholder="Apto, casa"
+                value={form.complement}
+                onChange={handleChange}
+                className={input}
+              />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* SENHA */}
+      <div className="space-y-[1px]">
+        <span className={label}>Senha</span>
+        <input
+          name="password"
+          type="password"
+          placeholder="••••••••"
+          value={form.password}
+          onChange={handleChange}
+          className={input}
+          required
+        />
       </div>
-      {error && <p className="text-xs text-red-600">{error}</p>}
-      <button type="submit" disabled={loading} className="w-full rounded-md bg-blue-600 text-white text-sm py-1 md:py-1.5 hover:bg-blue-700 disabled:opacity-50">
-        {loading ? "Criando..." : "Criar conta"}
-      </button>
-      <p className="text-[11px] text-center">
-        Já tem conta? <Link href="/login" className="text-blue-600 hover:underline">Entrar</Link>
-      </p>
+
+      <div className="space-y-[1px]">
+        <span className={label}>Confirmar senha</span>
+        <input
+          name="confirm"
+          type="password"
+          placeholder="••••••••"
+          value={form.confirm}
+          onChange={handleChange}
+          className={input}
+          required
+        />
+      </div>
+
+      {error && (
+        <p className="text-[10px] text-red-600">{error}</p>
+      )}
+
+      {/* CTA */}
+      <div className="mt-2 space-y-1">
+        <button
+          disabled={loading || !cepReady}
+          className="w-full rounded-md bg-blue-600 text-white py-1.5 text-sm disabled:opacity-50"
+        >
+          {loading ? "Criando..." : "Criar conta"}
+        </button>
+
+        <p className="text-[10px] text-center">
+          Já tem conta?{" "}
+          <Link href="/login" className="text-blue-600 hover:underline">
+            Entrar
+          </Link>
+        </p>
+      </div>
     </form>
   );
 }
