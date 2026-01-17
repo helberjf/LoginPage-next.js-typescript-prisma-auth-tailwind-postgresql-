@@ -21,6 +21,18 @@ type Product = {
   name: string;
   description: string | null;
   priceCents: number;
+
+  salesCount?: number | null;
+  ratingAverage?: number | null;
+  ratingCount?: number | null;
+
+  discountPercent?: number | null;
+  hasFreeShipping?: boolean;
+
+  images?: {
+    url: string;
+    position?: number;
+  }[];
 };
 
 export default function Home() {

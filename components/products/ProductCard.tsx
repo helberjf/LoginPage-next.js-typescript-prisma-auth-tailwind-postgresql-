@@ -78,11 +78,7 @@ export default function ProductCard({
         )}
 
         <Link
-          href={
-            isLogged
-              ? `/checkout/${product.id}`
-              : `/login?callbackUrl=/checkout/${product.id}`
-          }
+          href={`/products/${product.id}`}
           className="block mt-1 text-center text-[11px] py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
         >
           Comprar

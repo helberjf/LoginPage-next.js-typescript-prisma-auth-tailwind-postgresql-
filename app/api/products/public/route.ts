@@ -18,11 +18,14 @@ export async function GET() {
       name: true,
       description: true,
       priceCents: true,
+      salesCount: true,
+      ratingAverage: true,
+      ratingCount: true,
       discountPercent: true,
       hasFreeShipping: true,
       images: {
         where: { position: 0 },
-        select: { url: true },
+        select: { url: true, position: true },
       },
     },
   });

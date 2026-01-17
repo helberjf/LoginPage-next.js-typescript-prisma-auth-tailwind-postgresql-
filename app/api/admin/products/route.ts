@@ -25,6 +25,7 @@ async function requireAdmin() {
 const productCreateSchema = z.object({
   name: z.string().min(1),
   description: z.string().min(1),
+  categoryId: z.string().min(1),
   priceCents: z.number().int().positive(),
   stock: z.number().int().nonnegative().optional(),
   active: z.boolean().optional(),
@@ -133,6 +134,7 @@ export async function POST(request: Request) {
     data: {
       name: data.name.trim(),
       description: data.description.trim(),
+      categoryId: data.categoryId,
       priceCents: data.priceCents,
       stock: data.stock ?? 0,
       active: data.active ?? true,
