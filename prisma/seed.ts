@@ -9,17 +9,9 @@ const adapter = new PrismaPg({
 
 const prisma = new PrismaClient({ adapter });
 
-function unsplash(photoId: string, width = 900) {
-  const params = new URLSearchParams({
-    auto: "format",
-    fit: "crop",
-    w: String(width),
-    q: "80",
-  });
-
-  return `https://images.unsplash.com/photo-${photoId}?${params.toString()}`;
+function unsplashPhoto(photoId: string) {
+  return `https://images.unsplash.com/photo-${photoId}?auto=format&fit=crop&w=900&q=80`;
 }
-
 
 async function main() {
   // =========================================================
@@ -105,21 +97,56 @@ async function main() {
   console.log("✅ Customer criado/atualizado:", customer.email);
 
   // =========================================================
+  // 2.5) CATEGORY (ADICIONADO — SEM ALTERAR O RESTO)
+  // =========================================================
+  const categories = [
+    { name: "Roupas", slug: "roupas", description: "Vestuário em geral" },
+    { name: "Calçados", slug: "calcados", description: "Tênis e calçados urbanos" },
+    { name: "Acessórios", slug: "acessorios", description: "Mochilas e eletrônicos" },
+    { name: "Outros", slug: "outros", description: "Outros produtos" },
+  ];
+
+  for (const category of categories) {
+    await prisma.category.upsert({
+      where: { slug: category.slug },
+      update: {
+        name: category.name,
+        description: category.description,
+        active: true,
+        deletedAt: null,
+      },
+      create: category,
+    });
+  }
+
+  const categoryList = await prisma.category.findMany({
+    where: { slug: { in: ["roupas", "calcados", "acessorios", "outros"] } },
+    select: { id: true, slug: true },
+  });
+
+  const categoryBySlug = new Map(categoryList.map(c => [c.slug, c.id]));
+
+  const roupasId = categoryBySlug.get("roupas")!;
+  const calcadosId = categoryBySlug.get("calcados")!;
+  const acessoriosId = categoryBySlug.get("acessorios")!;
+  const outrosId = categoryBySlug.get("outros")!;
+
+  // =========================================================
   // 3) LIMPEZA (idempotência real)
   // =========================================================
-  // Vamos limpar tudo que é "seedado" de forma segura:
-  // - Apaga pedidos do customer e do guest
-  // - Apaga produtos seedados pelo nome (já que não tem unique)
   await prisma.order.deleteMany({
     where: {
       OR: [{ userId: customer.id }, { guestEmail: "guest@example.com" }],
     },
   });
 
-  // Delete produtos seedados (pelo nome)
-  const productNames = ["Camiseta Premium", "Tênis Urbano", "Mochila Tech", "Fone Bluetooth"];
+  const productNames = [
+    "Camiseta Premium",
+    "Tênis Urbano",
+    "Mochila Tech",
+    "Fone Bluetooth",
+  ];
 
-  // Apaga imagens dos produtos seedados
   const existingSeedProducts = await prisma.product.findMany({
     where: { name: { in: productNames } },
     select: { id: true },
@@ -140,7 +167,7 @@ async function main() {
   console.log("✅ Limpeza do seed concluída");
 
   // =========================================================
-  // 4) CRIA PRODUTOS (com fotos reais)
+  // 4) CRIA PRODUTOS (APENAS categoryId ADICIONADO)
   // =========================================================
   const products = await prisma.product.createMany({
     data: [
@@ -150,6 +177,7 @@ async function main() {
         priceCents: 7990,
         stock: 25,
         active: true,
+        categoryId: roupasId,
         salesCount: 18,
         ratingAverage: 4.7,
         ratingCount: 142,
@@ -163,6 +191,7 @@ async function main() {
         priceCents: 21990,
         stock: 12,
         active: true,
+        categoryId: calcadosId,
         salesCount: 6,
         ratingAverage: 4.4,
         ratingCount: 51,
@@ -176,6 +205,7 @@ async function main() {
         priceCents: 15990,
         stock: 7,
         active: true,
+        categoryId: acessoriosId,
         salesCount: 9,
         ratingAverage: 4.6,
         ratingCount: 88,
@@ -189,6 +219,7 @@ async function main() {
         priceCents: 12990,
         stock: 30,
         active: true,
+        categoryId: outrosId,
         salesCount: 21,
         ratingAverage: 4.5,
         ratingCount: 203,
@@ -219,23 +250,24 @@ async function main() {
   // =========================================================
   await prisma.productImage.createMany({
   data: [
-    // Camiseta (real)
-    { productId: tshirt.id, position: 0, url: unsplash("1523275335684-37898b6baf30") },
-    { productId: tshirt.id, position: 1, url: unsplash("1520975958225-7f0f0a0ab262") },
+    // Camiseta
+    { productId: tshirt.id, position: 0, url: unsplashPhoto("1520975958225-7f0f0a0ab262") },
+    { productId: tshirt.id, position: 1, url: unsplashPhoto("1521572163474-6864f9cf17ab") },
 
-    // Tênis (real)
-    { productId: tenis.id, position: 0, url: unsplash("1542291026-7eec264c27ff") },
-    { productId: tenis.id, position: 1, url: unsplash("1528701800489-20be9c76c00d") },
+    // Tênis
+    { productId: tenis.id, position: 0, url: unsplashPhoto("1528701800489-20be9c76c00d") },
+    { productId: tenis.id, position: 1, url: unsplashPhoto("1542291026-7eec264c27ff") },
 
-    // Mochila (real)
-    { productId: mochila.id, position: 0, url: unsplash("1553062407-98eeb64c6a62") },
-    { productId: mochila.id, position: 1, url: unsplash("1526481280695-3c687fd643ed") },
+    // Mochila
+    { productId: mochila.id, position: 0, url: unsplashPhoto("1526481280695-3c687fd643ed") },
+    { productId: mochila.id, position: 1, url: unsplashPhoto("1553062407-98eeb64c6a62") },
 
-    // Fone (real)
-    { productId: fone.id, position: 0, url: unsplash("1518441902117-f0a75f2489a1") },
-    { productId: fone.id, position: 1, url: unsplash("1484704849700-f032a568e944") },
+    // Fone
+    { productId: fone.id, position: 0, url: unsplashPhoto("1484704849700-f032a568e944") },
+    { productId: fone.id, position: 1, url: unsplashPhoto("1518441902117-f0a75f2489a1") },
   ],
 });
+
 
   console.log("✅ Imagens criadas");
 

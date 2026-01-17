@@ -1,3 +1,4 @@
+// app/dashboard/admin/products/[id]/page.tsx
 import ProductForm from "@/components/admin/ProductForm";
 
 type Props = {
