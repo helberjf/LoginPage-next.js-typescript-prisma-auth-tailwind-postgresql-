@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 
 type ProductImageInput = { url: string; position: number };
 
+type Category = {
+  id: string;
+  name: string;
+};
+
 type Props = {
   productId?: string;
   onSuccess?: () => void;
@@ -28,6 +33,9 @@ export default function ProductForm({ productId, onSuccess }: Props) {
   const [active, setActive] = useState(true);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
   const [price, setPrice] = useState("0,00");
   const [stock, setStock] = useState("0");
 
@@ -53,6 +61,22 @@ export default function ProductForm({ productId, onSuccess }: Props) {
     return Math.round(priceCents * (1 - d / 100));
   }, [priceCents, discountPercent]);
 
+  /* ===== Load categories ===== */
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoadingCategories(true);
+        const res = await fetch("/api/categories", { credentials: "include" });
+        const data = await res.json();
+        setCategories(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error("Failed to load categories:", e);
+      } finally {
+        setLoadingCategories(false);
+      }
+    })();
+  }, []);
+
   /* ===== Load product (edit) ===== */
   useEffect(() => {
     if (!productId) return;
@@ -68,6 +92,7 @@ export default function ProductForm({ productId, onSuccess }: Props) {
         setActive(Boolean(p.active));
         setName(p.name ?? "");
         setDescription(p.description ?? "");
+        setCategoryId(p.categoryId ?? "");
         setPrice(formatBRL(Number(p.priceCents ?? 0)));
         setStock(String(p.stock ?? 0));
 
@@ -176,6 +201,7 @@ export default function ProductForm({ productId, onSuccess }: Props) {
 
     if (!name.trim()) return setError("Título é obrigatório.");
     if (!description.trim()) return setError("Descrição é obrigatória.");
+    if (!categoryId) return setError("Categoria é obrigatória.");
     if (priceCents == null || priceCents <= 0) return setError("Preço inválido.");
 
     setSaving(true);
@@ -184,6 +210,7 @@ export default function ProductForm({ productId, onSuccess }: Props) {
       id: productId,
       name: name.trim(),
       description: description.trim(),
+      categoryId,
       priceCents: priceCents!,
       stock: parseInt(stock, 10) || 0,
       active,
@@ -261,6 +288,23 @@ export default function ProductForm({ productId, onSuccess }: Props) {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
+        </div>
+
+        <div>
+          <label className="block text-xs mb-1">Categoria *</label>
+          <select
+            className="w-full border rounded-md px-3 py-2 text-sm"
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            disabled={loadingCategories}
+          >
+            <option value="">{loadingCategories ? "Carregando..." : "Selecione uma categoria"}</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="grid grid-cols-3 gap-3">

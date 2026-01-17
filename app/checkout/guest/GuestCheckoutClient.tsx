@@ -24,10 +24,25 @@ export default function GuestCheckoutClient() {
 
     const payload = {
       productId,
-      name: String(formData.get("name")),
-      email: String(formData.get("email")),
-      cpf: formData.get("cpf") ? String(formData.get("cpf")) : null,
-      phone: formData.get("phone") ? String(formData.get("phone")) : null,
+      quantity: 1,
+      guest: {
+        name: String(formData.get("name")),
+        email: String(formData.get("email")),
+        cpf: String(formData.get("cpf")),
+        phone: String(formData.get("phone")),
+        address: {
+          street: String(formData.get("street")),
+          number: String(formData.get("number")),
+          complement: formData.get("complement")
+            ? String(formData.get("complement"))
+            : null,
+          district: String(formData.get("district")),
+          city: String(formData.get("city")),
+          state: String(formData.get("state")),
+          zipCode: String(formData.get("zipCode")),
+          country: formData.get("country") ? String(formData.get("country")) : "BR",
+        },
+      },
     };
 
     try {
@@ -74,6 +89,84 @@ export default function GuestCheckoutClient() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* inputs */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Nome</label>
+            <input name="name" required className="w-full rounded-md border px-3 py-2 text-sm" />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Email</label>
+            <input name="email" type="email" required className="w-full rounded-md border px-3 py-2 text-sm" />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">CPF</label>
+              <input name="cpf" required className="w-full rounded-md border px-3 py-2 text-sm" />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Telefone</label>
+              <input name="phone" required className="w-full rounded-md border px-3 py-2 text-sm" />
+            </div>
+          </div>
+
+          <div className="pt-2">
+            <div className="text-sm font-semibold">Endereço</div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Rua</label>
+            <input name="street" required className="w-full rounded-md border px-3 py-2 text-sm" />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Número</label>
+              <input name="number" required className="w-full rounded-md border px-3 py-2 text-sm" />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Complemento</label>
+              <input name="complement" className="w-full rounded-md border px-3 py-2 text-sm" />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Bairro</label>
+            <input name="district" required className="w-full rounded-md border px-3 py-2 text-sm" />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Cidade</label>
+              <input name="city" required className="w-full rounded-md border px-3 py-2 text-sm" />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Estado</label>
+              <input name="state" required className="w-full rounded-md border px-3 py-2 text-sm" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">CEP</label>
+              <input name="zipCode" required className="w-full rounded-md border px-3 py-2 text-sm" />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">País</label>
+              <input name="country" defaultValue="BR" className="w-full rounded-md border px-3 py-2 text-sm" />
+            </div>
+          </div>
+
+          {error ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </div>
+          ) : null}
+
           <button
             type="submit"
             disabled={loading}

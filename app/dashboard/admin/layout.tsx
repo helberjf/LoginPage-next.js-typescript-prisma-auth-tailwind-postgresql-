@@ -1,6 +1,7 @@
-// app/dashboard/layout.tsx
-import { auth } from "@/auth";
+// app/dashboard/admin/layout.tsx
 import { redirect } from "next/navigation";
+import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
 import Breadcrumbs from "@/components/admin/Breadcrumbs";
 
 export default async function DashboardLayout({
@@ -12,6 +13,16 @@ export default async function DashboardLayout({
 
   if (!session?.user) {
     redirect("/login");
+  }
+
+  // Check if user is admin
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { role: true },
+  });
+
+  if (user?.role !== "ADMIN") {
+    redirect("/dashboard");
   }
 
   return (

@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import ProductModal from "@/components/admin/ProductModal";
 
 type Product = {
@@ -138,7 +139,7 @@ export default function ProductList() {
                 </div>
 
                 {/* INFO */}
-                <div className="p-3 space-y-1">
+                <div className="p-3 space-y-2">
                   <div className="text-sm line-clamp-2">
                     {p.name}
                   </div>
@@ -167,6 +168,35 @@ export default function ProductList() {
                       Frete grátis
                     </div>
                   )}
+
+                  {/* ACTIONS */}
+                  <div className="flex gap-2 pt-2">
+                    <Link
+                      href={`/dashboard/admin/products/${p.id}`}
+                      className="flex-1 px-2 py-1 bg-indigo-600 text-white text-xs rounded text-center hover:bg-indigo-700 transition"
+                    >
+                      Editar
+                    </Link>
+                    <button
+                      onClick={async () => {
+                        if (!confirm("Tem certeza que deseja deletar este produto?")) return;
+                        try {
+                          const res = await fetch(`/api/admin/products?id=${p.id}`, {
+                            method: "DELETE",
+                            credentials: "include",
+                          });
+                          if (res.ok) {
+                            load(search.trim());
+                          }
+                        } catch (e) {
+                          console.error("Erro ao deletar:", e);
+                        }
+                      }}
+                      className="flex-1 px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition"
+                    >
+                      Deletar
+                    </button>
+                  </div>
                 </div>
               </div>
             );
