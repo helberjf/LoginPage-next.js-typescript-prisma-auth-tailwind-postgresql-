@@ -140,7 +140,7 @@ export default function Home() {
       </section>
 
       {/* PRODUTOS */}
-      <section className="max-w-7xl mx-auto space-y-4">
+      <section className="max-w-7xl mx-auto space-y-4 px-1 sm:px-0">
         <header className="text-center space-y-1">
           <h2 className="text-xl font-bold">
             Produtos disponíveis
@@ -150,7 +150,7 @@ export default function Home() {
           </p>
         </header>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pb-8">
           {products.map((product) => (
             <ProductCard
               key={product.id}

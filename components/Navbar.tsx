@@ -13,24 +13,40 @@ export default function Navbar() {
 
   return (
     <header className="w-full border-b bg-white dark:bg-neutral-900">
-      <div className="max-w-7xl mx-auto h-14 px-6 flex items-center justify-between">
-        {/* Logo / Home (estilo botão) */}
+      <div className="max-w-7xl mx-auto h-14 px-6 flex items-center gap-6">
+
+        {/* ESQUERDA — Home */}
         <Link
           href="/"
-          className="px-3 py-1.5 rounded-lg border border-neutral-300 text-sm font-semibold text-neutral-800 hover:bg-neutral-100 transition-colors dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800 md:ml-0 ml-16"
-          >
+          className="hidden md:inline-block px-3 py-1.5 rounded-lg border border-neutral-300 text-sm font-semibold text-neutral-800 hover:bg-neutral-100 transition-colors dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
+        >
           Sua loja
         </Link>
 
-        {/* Nav actions */}
-        <nav className="flex items-center gap-4 text-sm">
+        {/* Logo como botão */}
+        <Link
+          href="/"
+          aria-label="Página inicial"
+          className="flex items-center px-2 py-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+        >
+          <span className="text-sm font-bold tracking-wide text-neutral-800 dark:text-neutral-100">
+            LOGO
+          </span>
+
+          {/*
+            Versão com imagem:
+            <Image src="/logo.svg" alt="Logo" width={28} height={28} />
+          */}
+        </Link>
+
+        {/* DIREITA — Navegação */}
+        <nav className="ml-auto flex items-center gap-4 text-sm">
           <Link href="/products" className="hover:underline">
             Produtos
           </Link>
 
           {session ? (
             <>
-              {/* Só aparece fora do dashboard */}
               {!isDashboard && (
                 <Link
                   href="/dashboard"
@@ -48,11 +64,7 @@ export default function Navbar() {
               </button>
             </>
           ) : (
-            /* Entrar só no desktop */
-            <Link
-              href="/login"
-              className="hidden md:inline hover:underline"
-            >
+            <Link href="/login" className="hidden md:inline hover:underline">
               Entrar
             </Link>
           )}
