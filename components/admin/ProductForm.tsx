@@ -36,9 +36,9 @@ export default function ProductForm({ productId, onSuccess }: Props) {
   const [couponCode, setCouponCode] = useState("");
 
   const [images, setImages] = useState<ProductImageInput[]>([]);
-  const [imageUrl, setImageUrl] = useState("");
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
+  const [urlInput, setUrlInput] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingProduct, setLoadingProduct] = useState(isEdit);
@@ -71,16 +71,14 @@ export default function ProductForm({ productId, onSuccess }: Props) {
         setPrice(formatBRL(Number(p.priceCents ?? 0)));
         setStock(String(p.stock ?? 0));
 
-        setDiscountPercent(
-          p.discountPercent == null ? "" : String(p.discountPercent)
-        );
+        setDiscountPercent(p.discountPercent == null ? "" : String(p.discountPercent));
         setHasFreeShipping(Boolean(p.hasFreeShipping));
         setCouponCode(p.couponCode ?? "");
 
         const imgs: ProductImageInput[] = Array.isArray(p.images)
           ? p.images
               .slice()
-              .sort((a: any, b: any) => a.position - b.position)
+              .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
               .map((img: any) => ({
                 url: String(img.url ?? ""),
                 position: Number(img.position ?? 0),
@@ -88,7 +86,6 @@ export default function ProductForm({ productId, onSuccess }: Props) {
           : [];
 
         setImages(imgs);
-        setImageUrl(imgs[0]?.url ?? "");
       } catch {
         setError("Falha ao carregar produto.");
       } finally {
@@ -97,7 +94,7 @@ export default function ProductForm({ productId, onSuccess }: Props) {
     })();
   }, [productId]);
 
-  /* ===== Upload ===== */
+  /* ===== Upload (1 file per request) ===== */
   const uploadCover = async (file: File) => {
     setUploading(true);
     setError(null);
@@ -112,18 +109,20 @@ export default function ProductForm({ productId, onSuccess }: Props) {
         body: fd,
       });
 
+      const data = await res.json().catch(() => null);
+
       if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        throw new Error(err?.error ?? "Falha no upload.");
+        throw new Error(data?.error ?? "Falha no upload.");
       }
 
-      const { url } = await res.json();
+      const url = data?.url as string;
 
-      setImages(prev => {
-        const nextPos = prev.length;
-        const next = [...prev, { url, position: nextPos }];
-        if (nextPos === 0) setImageUrl(url);
-        return next;
+      setImages((prev) => {
+        // evita duplicada
+        if (prev.some((p) => p.url === url)) return prev;
+
+        const next = [...prev, { url, position: prev.length }];
+        return next.map((img, i) => ({ ...img, position: i }));
       });
     } catch (e: any) {
       setError(e?.message ?? "Falha no upload.");
@@ -132,29 +131,40 @@ export default function ProductForm({ productId, onSuccess }: Props) {
     }
   };
 
+  /* ===== Add URL ===== */
+  const addImageByUrl = () => {
+    const url = urlInput.trim();
+    if (!url) return;
+
+    setImages((prev) => {
+      if (prev.some((p) => p.url === url)) return prev;
+
+      const next = [...prev, { url, position: prev.length }];
+      return next.map((img, i) => ({ ...img, position: i }));
+    });
+
+    setUrlInput("");
+  };
+
+  /* ===== Reorder ===== */
   const reorderImages = (from: number, to: number) => {
-    setImages(prev => {
+    setImages((prev) => {
       const copy = [...prev];
       const [moved] = copy.splice(from, 1);
       copy.splice(to, 0, moved);
 
-      const ordered = copy.map((img, i) => ({
-        ...img,
-        position: i,
-      }));
-
-      setImageUrl(ordered[0]?.url ?? "");
-      return ordered;
+      return copy.map((img, i) => ({ ...img, position: i }));
     });
+
+    setDragIndex(null);
   };
 
+  /* ===== Remove ===== */
   const removeImage = (index: number) => {
-    setImages(prev => {
+    setImages((prev) => {
       const next = prev
         .filter((_, i) => i !== index)
         .map((img, i) => ({ ...img, position: i }));
-
-      setImageUrl(next[0]?.url ?? "");
       return next;
     });
   };
@@ -163,6 +173,11 @@ export default function ProductForm({ productId, onSuccess }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!name.trim()) return setError("Título é obrigatório.");
+    if (!description.trim()) return setError("Descrição é obrigatória.");
+    if (priceCents == null || priceCents <= 0) return setError("Preço inválido.");
+
     setSaving(true);
 
     const payload = {
@@ -170,16 +185,12 @@ export default function ProductForm({ productId, onSuccess }: Props) {
       name: name.trim(),
       description: description.trim(),
       priceCents: priceCents!,
-      stock: parseInt(stock, 10),
+      stock: parseInt(stock, 10) || 0,
       active,
-      discountPercent: discountPercent
-        ? parseInt(discountPercent, 10)
-        : null,
+      discountPercent: discountPercent.trim() ? parseInt(discountPercent, 10) : null,
       hasFreeShipping,
-      couponCode: couponCode.trim()
-        ? couponCode.trim().toUpperCase()
-        : null,
-      images,
+      couponCode: couponCode.trim() ? couponCode.trim().toUpperCase() : null,
+      images: images.map((img, i) => ({ url: img.url, position: i })),
     };
 
     try {
@@ -190,12 +201,15 @@ export default function ProductForm({ productId, onSuccess }: Props) {
         body: JSON.stringify(payload),
       });
 
+      const data = await res.json().catch(() => null);
+
       if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        return setError(err?.error ?? "Falha ao salvar produto.");
+        setError(data?.error ?? "Falha ao salvar produto.");
+        return;
       }
 
-      onSuccess ? onSuccess() : router.push("/dashboard/admin/products");
+      if (onSuccess) onSuccess();
+      else router.push("/dashboard/admin/products");
     } catch {
       setError("Falha ao salvar produto.");
     } finally {
@@ -217,15 +231,13 @@ export default function ProductForm({ productId, onSuccess }: Props) {
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold">
-          {isEdit ? "Editar produto" : ""}
-        </span>
+        <span className="text-sm font-semibold">{isEdit ? "Editar produto" : "Novo produto"}</span>
 
         <label className="flex items-center gap-2 text-xs">
           <input
             type="checkbox"
             checked={active}
-            onChange={e => setActive(e.target.checked)}
+            onChange={(e) => setActive(e.target.checked)}
           />
           Ativo
         </label>
@@ -238,7 +250,7 @@ export default function ProductForm({ productId, onSuccess }: Props) {
           <input
             className="w-full border rounded-md px-3 py-2 text-sm"
             value={name}
-            onChange={e => setName(e.target.value)}
+            onChange={(e) => setName(e.target.value)}
           />
         </div>
 
@@ -247,7 +259,7 @@ export default function ProductForm({ productId, onSuccess }: Props) {
           <textarea
             className="w-full border rounded-md px-3 py-2 text-sm min-h-[60px]"
             value={description}
-            onChange={e => setDescription(e.target.value)}
+            onChange={(e) => setDescription(e.target.value)}
           />
         </div>
 
@@ -257,7 +269,8 @@ export default function ProductForm({ productId, onSuccess }: Props) {
             <input
               className="w-full border rounded-md px-3 py-2 text-sm"
               value={price}
-              onChange={e => setPrice(e.target.value)}
+              onChange={(e) => setPrice(e.target.value)}
+              inputMode="decimal"
             />
           </div>
 
@@ -266,7 +279,8 @@ export default function ProductForm({ productId, onSuccess }: Props) {
             <input
               className="w-full border rounded-md px-3 py-2 text-sm"
               value={stock}
-              onChange={e => setStock(e.target.value)}
+              onChange={(e) => setStock(e.target.value)}
+              inputMode="numeric"
             />
           </div>
 
@@ -275,16 +289,27 @@ export default function ProductForm({ productId, onSuccess }: Props) {
             <input
               className="w-full border rounded-md px-3 py-2 text-sm"
               value={discountPercent}
-              onChange={e => setDiscountPercent(e.target.value)}
+              onChange={(e) => setDiscountPercent(e.target.value)}
+              inputMode="numeric"
             />
           </div>
+        </div>
+
+        <div>
+          <label className="block text-xs mb-1">Cupom (opcional)</label>
+          <input
+            className="w-full border rounded-md px-3 py-2 text-sm uppercase"
+            value={couponCode}
+            onChange={(e) => setCouponCode(e.target.value)}
+            placeholder="OFERTA10"
+          />
         </div>
 
         <label className="flex items-center gap-2 text-xs">
           <input
             type="checkbox"
             checked={hasFreeShipping}
-            onChange={e => setHasFreeShipping(e.target.checked)}
+            onChange={(e) => setHasFreeShipping(e.target.checked)}
           />
           Frete grátis
         </label>
@@ -292,43 +317,68 @@ export default function ProductForm({ productId, onSuccess }: Props) {
 
       {/* Fotos */}
       <div className="border rounded-md p-3 space-y-2">
-        <span className="text-xs font-semibold">Fotos (opcional)</span>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-semibold">Fotos (opcional)</span>
 
-        <label className="inline-block text-xs ml-4 px-2 py-2 border rounded cursor-pointer">
-          Selecionar imagens
+          <label className="inline-block text-xs px-3 py-2 border rounded cursor-pointer">
+            {uploading ? "Enviando..." : "Selecionar imagens"}
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              hidden
+              disabled={uploading}
+              onChange={(e) => {
+                const files = Array.from(e.target.files ?? []);
+                files.forEach(uploadCover);
+                e.currentTarget.value = "";
+              }}
+            />
+          </label>
+        </div>
+
+        {/* URL input sempre visível */}
+        <div className="flex gap-2">
           <input
-            type="file"
-            accept="image/*"
-            multiple
-            hidden
-            onChange={e =>
-              Array.from(e.target.files ?? []).forEach(uploadCover)
-            }
+            className="w-full border rounded-md px-3 py-2 text-xs"
+            placeholder="Cole uma URL de imagem (opcional)"
+            value={urlInput}
+            onChange={(e) => setUrlInput(e.target.value)}
           />
-        </label>
+          <button
+            type="button"
+            onClick={addImageByUrl}
+            className="px-3 py-2 border rounded text-xs"
+          >
+            Add URL
+          </button>
+        </div>
 
+        {/* Preview só se tiver imagens */}
         {images.length > 0 && (
           <div className="grid grid-cols-3 gap-2 pt-2">
             {images.map((img, i) => (
               <div
-                key={img.url}
+                key={`${img.url}-${i}`}
                 draggable
                 onDragStart={() => setDragIndex(i)}
-                onDragOver={e => e.preventDefault()}
-                onDrop={() =>
-                  dragIndex !== null && reorderImages(dragIndex, i)
-                }
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => dragIndex !== null && reorderImages(dragIndex, i)}
                 className="border rounded p-1 cursor-move"
               >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={img.url}
+                  alt={`Imagem ${i + 1}`}
                   className="h-24 w-full object-contain"
                 />
+
                 {i === 0 && (
                   <div className="text-[10px] text-center text-indigo-600">
                     CAPA
                   </div>
                 )}
+
                 <button
                   type="button"
                   className="text-xs text-red-600 w-full"
@@ -347,17 +397,16 @@ export default function ProductForm({ productId, onSuccess }: Props) {
         <span className="text-xs">
           Preço final:{" "}
           <strong>
-            {computedFinalCents
-              ? `R$ ${formatBRL(computedFinalCents)}`
-              : "-"}
+            {computedFinalCents != null ? `R$ ${formatBRL(computedFinalCents)}` : "-"}
           </strong>
         </span>
 
         <button
+          type="submit"
           disabled={saving || uploading}
-          className="px-4 py-2 bg-indigo-600 text-white rounded text-sm"
+          className="px-4 py-2 bg-indigo-600 text-white rounded text-sm disabled:opacity-60"
         >
-          {saving ? "Salvando..." : "Publicar"}
+          {saving ? "Salvando..." : isEdit ? "Salvar" : "Publicar"}
         </button>
       </div>
     </form>

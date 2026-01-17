@@ -1,10 +1,12 @@
+// src/components/Sidebar.tsx
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Session } from "next-auth";
+import type { Session } from "next-auth";
 
 import SignOutButton from "@/components/SignOutButton";
+import ThemeSwitcher from "@/components/ThemeSwitcher";
 import { SidebarNav } from "@/components/SidebarNav";
 
 type SidebarProps = {
@@ -20,12 +22,8 @@ export default function Sidebar({ user }: SidebarProps) {
     <aside className="hidden md:flex w-64 flex-col border-r bg-white dark:bg-neutral-900">
       {/* User */}
       <div className="p-6 border-b">
-        <p className="font-semibold truncate">
-          {user.name ?? "Usuário"}
-        </p>
-        <p className="text-xs text-neutral-500 truncate">
-          {user.email}
-        </p>
+        <p className="font-semibold truncate">{user.name ?? "Usuário"}</p>
+        <p className="text-xs text-neutral-500 truncate">{user.email}</p>
       </div>
 
       {/* Nav */}
@@ -34,8 +32,7 @@ export default function Sidebar({ user }: SidebarProps) {
           if (adminOnly && !isAdmin) return null;
           if (customerOnly && !isCustomer) return null;
 
-          const active =
-            pathname === href || pathname.startsWith(`${href}/`);
+          const active = pathname === href || pathname.startsWith(`${href}/`);
 
           return (
             <Link
@@ -56,8 +53,9 @@ export default function Sidebar({ user }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t">
-        <SignOutButton />
+      <div className="p-4 border-t space-y-2">
+        <ThemeSwitcher />
+        <SignOutButton className="w-full justify-start" />
       </div>
     </aside>
   );

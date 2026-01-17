@@ -1,38 +1,27 @@
-import prisma from "@/lib/prisma";
+// app/dashboard/page.tsx
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 
 /**
- * IMPORTANTE:
- * - A autenticação já foi garantida pelo layout
- * - Aqui cuidamos apenas de dados e UI
+ * Dashboard do CUSTOMER
+ * - Autenticação garantida pelo layout
+ * - Aqui garantimos role e dados corretos
  */
 export default async function DashboardPage() {
-  /**
-   * OBS:
-   * Neste estágio, buscamos o usuário pelo relacionamento indireto:
-   * orders → user
-   *
-   * Em breve isso pode ser refinado passando o userId pelo layout/context.
-   */
+  const session = await auth();
 
-  // Buscar usuário mais recente com pedidos
-  const user = await prisma.user.findFirst({
-    orderBy: {
-      createdAt: "desc",
-    },
-    select: {
-      id: true,
-      name: true,
-    },
-  });
-
-  if (!user) {
-    return (
-      <p className="text-sm text-neutral-500">
-        Nenhum usuário encontrado.
-      </p>
-    );
+  if (!session?.user?.id) {
+    redirect("/login");
   }
+
+  // 🔒 ADMIN NÃO DEVE ENTRAR AQUI
+  if (session.user.role === "ADMIN") {
+    redirect("/dashboard/admin/dashboard");
+  }
+
+  const userId = session.user.id;
 
   const [
     totalOrders,
@@ -41,19 +30,19 @@ export default async function DashboardPage() {
     lastOrder,
   ] = await Promise.all([
     prisma.order.count({
-      where: { userId: user.id },
+      where: { userId },
     }),
 
     prisma.order.count({
       where: {
-        userId: user.id,
+        userId,
         status: "PAID",
       },
     }),
 
     prisma.order.aggregate({
       where: {
-        userId: user.id,
+        userId,
         status: "PAID",
       },
       _sum: {
@@ -62,7 +51,7 @@ export default async function DashboardPage() {
     }),
 
     prisma.order.findFirst({
-      where: { userId: user.id },
+      where: { userId },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,

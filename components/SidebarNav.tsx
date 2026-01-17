@@ -9,7 +9,9 @@ import {
   Boxes,
   Users,
   Plus,
+  LogOut,
 } from "lucide-react";
+import { signOut } from "next-auth/react";
 
 export type SidebarItem = {
   label: string;
@@ -74,6 +76,18 @@ export const SidebarNav: SidebarItem[] = [
     label: "Usuários",
     href: "/dashboard/admin/users",
     icon: Users,
+    adminOnly: true,
+  },
+  {
+    label: "Pedidos",
+    href: "/dashboard/admin/orders",
+    icon: ShoppingCart,
+    adminOnly: true,
+  },
+  {
+    label: "Sair",
+    href: "/api/auth/signout",
+    icon: LogOut,
     adminOnly: true,
   },
 ];

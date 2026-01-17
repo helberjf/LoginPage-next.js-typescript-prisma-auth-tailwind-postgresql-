@@ -1,3 +1,4 @@
+// app/api/admin/products/route.ts
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
@@ -23,10 +24,23 @@ async function requireAdmin() {
  */
 const productCreateSchema = z.object({
   name: z.string().min(1),
-  description: z.string().optional(),
+  description: z.string().min(1),
   priceCents: z.number().int().positive(),
   stock: z.number().int().nonnegative().optional(),
   active: z.boolean().optional(),
+
+  discountPercent: z.number().int().min(1).max(90).nullable().optional(),
+  hasFreeShipping: z.boolean().optional(),
+  couponCode: z.string().min(3).nullable().optional(),
+
+  images: z
+    .array(
+      z.object({
+        url: z.string().url(),
+        position: z.number().int().nonnegative(),
+      })
+    )
+    .optional(),
 });
 
 const productUpdateSchema = productCreateSchema
@@ -48,33 +62,51 @@ export async function GET(request: Request) {
   const q = url.searchParams.get("q");
 
   if (id) {
-    const product = await prisma.product.findUnique({
-      where: { id },
+    const product = await prisma.product.findFirst({
+      where: { id, deletedAt: null },
+      include: {
+        images: { orderBy: { position: "asc" } },
+      },
     });
 
     if (!product) {
-      return NextResponse.json(
-        { error: "Product not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    return NextResponse.json(product);
+    return NextResponse.json({
+      ...product,
+      salesCount: product.salesCount ?? 0,
+      ratingAverage: product.ratingAverage ?? 0,
+      ratingCount: product.ratingCount ?? 0,
+    });
   }
 
   const products = await prisma.product.findMany({
-    where: q
-      ? {
-          OR: [
-            { name: { contains: q, mode: "insensitive" } },
-            { description: { contains: q, mode: "insensitive" } },
-          ],
-        }
-      : undefined,
+    where: {
+      deletedAt: null,
+      ...(q
+        ? {
+            OR: [
+              { name: { contains: q, mode: "insensitive" } },
+              { description: { contains: q, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    },
+    include: {
+      images: { orderBy: { position: "asc" } },
+    },
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json(products);
+  return NextResponse.json(
+    products.map(p => ({
+      ...p,
+      salesCount: p.salesCount ?? 0,
+      ratingAverage: p.ratingAverage ?? 0,
+      ratingCount: p.ratingCount ?? 0,
+    }))
+  );
 }
 
 /**
@@ -100,10 +132,28 @@ export async function POST(request: Request) {
   const created = await prisma.product.create({
     data: {
       name: data.name.trim(),
-      description: data.description?.trim() ?? "",
+      description: data.description.trim(),
       priceCents: data.priceCents,
       stock: data.stock ?? 0,
       active: data.active ?? true,
+
+      discountPercent: data.discountPercent ?? null,
+      hasFreeShipping: data.hasFreeShipping ?? false,
+      couponCode: data.couponCode?.trim() ?? null,
+
+      images: data.images
+        ? {
+            createMany: {
+              data: data.images.map(img => ({
+                url: img.url,
+                position: img.position,
+              })),
+            },
+          }
+        : undefined,
+    },
+    include: {
+      images: true,
     },
   });
 
@@ -128,12 +178,29 @@ export async function PUT(request: Request) {
     );
   }
 
-  const { id, ...data } = parsed.data;
+  const { id, images, ...data } = parsed.data;
 
   try {
     const updated = await prisma.product.update({
       where: { id },
-      data,
+      data: {
+        ...data,
+
+        images: images
+          ? {
+              deleteMany: {},
+              createMany: {
+                data: images.map(img => ({
+                  url: img.url,
+                  position: img.position,
+                })),
+              },
+            }
+          : undefined,
+      },
+      include: {
+        images: true,
+      },
     });
 
     return NextResponse.json(updated);
@@ -146,7 +213,7 @@ export async function PUT(request: Request) {
 }
 
 /**
- * DELETE
+ * DELETE (soft delete)
  */
 export async function DELETE(request: Request) {
   if (!(await requireAdmin())) {
@@ -160,7 +227,11 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    await prisma.product.delete({ where: { id } });
+    await prisma.product.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json(

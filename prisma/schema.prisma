@@ -149,12 +149,12 @@ model Product {
   stock       Int      @default(0)
   active      Boolean  @default(true)
 
-  // 📊 MARKETPLACE DATA
+  // MARKETPLACE DATA
   salesCount       Int      @default(0)
   ratingAverage    Float    @default(0)
   ratingCount      Int      @default(0)
 
-  // 💸 PROMO
+  // PROMO
   discountPercent  Int?     // ex: 10 = 10%
   hasFreeShipping  Boolean  @default(false)
   couponCode       String?
