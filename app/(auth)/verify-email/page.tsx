@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const params = useSearchParams();
   const router = useRouter();
 
@@ -53,48 +53,65 @@ export default function VerifyEmailPage() {
   }, [token, router]);
 
   return (
+    <div className="w-full max-w-md rounded-lg border bg-white dark:bg-neutral-900 p-6 text-center">
+      {status === "loading" && (
+        <>
+          <h1 className="text-lg font-semibold mb-2">
+            Verificando email…
+          </h1>
+          <p className="text-sm text-neutral-500">
+            Aguarde alguns segundos.
+          </p>
+        </>
+      )}
+
+      {status === "success" && (
+        <>
+          <h1 className="text-lg font-semibold text-green-600 mb-2">
+            Email confirmado
+          </h1>
+          <p className="text-sm text-neutral-600">
+            Você será redirecionado para o login.
+          </p>
+        </>
+      )}
+
+      {status === "error" && (
+        <>
+          <h1 className="text-lg font-semibold text-red-600 mb-2">
+            Erro
+          </h1>
+          <p className="text-sm text-neutral-600 mb-4">
+            {message}
+          </p>
+
+          <a
+            href="/login"
+            className="inline-block text-blue-600 hover:underline text-sm"
+          >
+            Ir para login
+          </a>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
     <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-950 px-4">
-      <div className="w-full max-w-md rounded-lg border bg-white dark:bg-neutral-900 p-6 text-center">
-        {status === "loading" && (
-          <>
-            <h1 className="text-lg font-semibold mb-2">
-              Verificando email…
-            </h1>
-            <p className="text-sm text-neutral-500">
-              Aguarde alguns segundos.
-            </p>
-          </>
-        )}
-
-        {status === "success" && (
-          <>
-            <h1 className="text-lg font-semibold text-green-600 mb-2">
-              Email confirmado
-            </h1>
-            <p className="text-sm text-neutral-600">
-              Você será redirecionado para o login.
-            </p>
-          </>
-        )}
-
-        {status === "error" && (
-          <>
-            <h1 className="text-lg font-semibold text-red-600 mb-2">
-              Erro
-            </h1>
-            <p className="text-sm text-neutral-600 mb-4">
-              {message}
-            </p>
-
-            <a
-              href="/login"
-              className="inline-block text-blue-600 hover:underline text-sm"
-            >
-              Ir para login
-            </a>
-          </>
-        )}
-      </div>
+      <Suspense fallback={
+        <div className="w-full max-w-md rounded-lg border bg-white dark:bg-neutral-900 p-6 text-center">
+          <h1 className="text-lg font-semibold mb-2">
+            Carregando…
+          </h1>
+          <p className="text-sm text-neutral-500">
+            Aguarde alguns segundos.
+          </p>
+        </div>
+      }>
+        <VerifyEmailContent />
+      </Suspense>
     </div>
   );
 }
