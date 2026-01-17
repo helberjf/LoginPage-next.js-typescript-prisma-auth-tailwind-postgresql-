@@ -149,6 +149,16 @@ model Product {
   stock       Int      @default(0)
   active      Boolean  @default(true)
 
+  // 📊 MARKETPLACE DATA
+  salesCount       Int      @default(0)
+  ratingAverage    Float    @default(0)
+  ratingCount      Int      @default(0)
+
+  // 💸 PROMO
+  discountPercent  Int?     // ex: 10 = 10%
+  hasFreeShipping  Boolean  @default(false)
+  couponCode       String?
+
   images      ProductImage[]
   orderItems  OrderItem[]
 
@@ -158,6 +168,7 @@ model Product {
 
   @@index([active])
 }
+
 
 ////////////////////
 // PRODUCT IMAGES

@@ -1,51 +1,185 @@
-"use client"
+// components/admin/ProductList.tsx
+"use client";
 
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from "react";
+import ProductModal from "@/components/admin/ProductModal";
 
-type Product = any
+type Product = {
+  id: string;
+  name: string;
+  description: string;
+  priceCents: number;
+  stock: number;
+  active: boolean;
+
+  salesCount?: number | null;
+  ratingAverage?: number | null;
+  ratingCount?: number | null;
+
+  discountPercent?: number | null;
+  hasFreeShipping: boolean;
+  couponCode?: string | null;
+
+  images?: {
+    url: string;
+    position: number;
+  }[];
+};
 
 export default function ProductList() {
-  const [products, setProducts] = useState<Product[] | null>(null)
-  const [loading, setLoading] = useState(false)
-  useEffect(() => {
-    setLoading(true)
-    fetch('/api/admin/products', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((data) => setProducts(data))
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false))
-  }, [])
+  const [products, setProducts] = useState<Product[]>([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [isSearching, setIsSearching] = useState(false);
+  const [openModal, setOpenModal] = useState(false);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete product?')) return
-    await fetch(`/api/admin/products?id=${id}`, { method: 'DELETE', credentials: 'include' })
-    setProducts((p) => p?.filter((x) => x.id !== id) ?? null)
+  const load = async (q = "") => {
+    try {
+      const url = q
+        ? `/api/admin/products?q=${encodeURIComponent(q)}`
+        : "/api/admin/products";
+
+      const res = await fetch(url, { credentials: "include" });
+      const data = await res.json();
+      setProducts(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error(e);
+      setProducts([]);
+    } finally {
+      setLoading(false);
+      setIsSearching(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  useEffect(() => {
+    if (!search.trim()) {
+      load();
+      return;
+    }
+
+    setIsSearching(true);
+    const t = setTimeout(() => load(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  if (loading) {
+    return <div className="text-center py-8">Carregando produtos…</div>;
   }
 
-  if (loading) return <div className="text-center py-8">Loading...</div>
-  if (!products || products.length === 0) return <div className="text-center py-8">No products</div>
-
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-medium">Products</h3>
-        <a href="/admin/products/new" className="inline-block px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">New product</a>
+    <div className="space-y-6">
+      {/* ACTIONS */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-4">
+        <input
+          placeholder="Buscar produtos…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="border px-3 py-2 rounded w-full md:max-w-sm"
+        />
+
+        <button
+          onClick={() => setOpenModal(true)}
+          className="px-4 py-2 bg-indigo-600 text-white rounded"
+        >
+          Novo produto
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
-        {products.map((p: Product) => (
-          <div key={p.id} className="flex items-center justify-between p-4 border rounded-md bg-neutral-50 dark:bg-neutral-900">
-            <div>
-              <div className="font-semibold">{p.name}</div>
-              <div className="text-sm text-neutral-500">Price: {p.price} • Stock: {p.stock}</div>
-            </div>
-            <div className="flex items-center gap-3">
-              <a className="text-sm text-indigo-600 hover:underline" href={`/admin/products/${p.id}`}>Edit</a>
-              <button className="text-sm text-red-600 hover:underline" onClick={() => handleDelete(p.id)}>Delete</button>
-            </div>
-          </div>
-        ))}
-      </div>
+      {isSearching && (
+        <div className="text-sm text-neutral-500">
+          Buscando…
+        </div>
+      )}
+
+      {/* GRID */}
+      {products.length === 0 ? (
+        <div className="text-center py-8 text-neutral-500">
+          Nenhum produto encontrado
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {products.map(p => {
+            const mainImage =
+              p.images?.find(img => img.position === 0)?.url ?? null;
+
+            const priceCents = p.priceCents ?? 0;
+
+            const finalPrice =
+              p.discountPercent && p.discountPercent > 0
+                ? Math.round(priceCents * (1 - p.discountPercent / 100))
+                : priceCents;
+
+            const sales = p.salesCount ?? 0;
+            const ratingAvg = p.ratingAverage ?? 0;
+            const ratingCount = p.ratingCount ?? 0;
+
+            return (
+              <div
+                key={p.id}
+                className="border rounded-lg bg-white dark:bg-neutral-900 overflow-hidden"
+              >
+                {/* IMAGE */}
+                <div className="aspect-square bg-neutral-100">
+                  {mainImage ? (
+                    <img
+                      src={mainImage}
+                      alt={p.name}
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-neutral-400 text-xs">
+                      Sem imagem
+                    </div>
+                  )}
+                </div>
+
+                {/* INFO */}
+                <div className="p-3 space-y-1">
+                  <div className="text-sm line-clamp-2">
+                    {p.name}
+                  </div>
+
+                  <div className="text-xs text-neutral-500">
+                    {sales} vendidos • ⭐ {ratingAvg.toFixed(1)} ({ratingCount})
+                  </div>
+
+                  <div className="text-base font-semibold">
+                    R$ {(finalPrice / 100).toFixed(2)}
+                    {p.discountPercent && p.discountPercent > 0 && (
+                      <span className="text-xs text-green-600 ml-1">
+                        {p.discountPercent}% OFF
+                      </span>
+                    )}
+                  </div>
+
+                  {p.couponCode && (
+                    <div className="text-xs text-indigo-600">
+                      Cupom: {p.couponCode}
+                    </div>
+                  )}
+
+                  {p.hasFreeShipping && (
+                    <div className="text-xs text-green-600">
+                      Frete grátis
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* MODAL */}
+      <ProductModal
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+        onCreated={() => load(search.trim())}
+      />
     </div>
-  )
+  );
 }

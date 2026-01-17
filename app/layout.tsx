@@ -5,8 +5,8 @@ import Providers from "@/components/Providers";
 import Navbar from "@/components/Navbar";
 
 export const metadata: Metadata = {
-  title: "Next Auth Starter",
-  description: "Projeto base com Next.js 16, Auth.js, Prisma, Tailwind v4",
+  title: "Sistema de Venda Online",
+  description: "Não pague comissão para vender seus produtos",
 };
 
 export default function RootLayout({

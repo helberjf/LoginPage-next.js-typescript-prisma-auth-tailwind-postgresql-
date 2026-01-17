@@ -1,3 +1,4 @@
+// lib/email-templates/verification.ts
 export function verificationEmailTemplate({
   verifyUrl,
   appName,

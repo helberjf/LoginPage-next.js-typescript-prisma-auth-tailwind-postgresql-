@@ -17,7 +17,7 @@ export default function Navbar() {
         {/* Logo / Home (estilo botão) */}
         <Link
           href="/"
-          className="px-3 py-1.5 rounded-lg border border-neutral-300 text-sm font-semibold text-neutral-800 hover:bg-neutral-100 transition-colors dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
+          className="px-3 py-1.5 rounded-lg border border-neutral-300 text-sm font-semibold text-neutral-800 hover:bg-neutral-100 transition-colors dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800 md:ml-0 ml-16"
           >
           Sua loja
         </Link>

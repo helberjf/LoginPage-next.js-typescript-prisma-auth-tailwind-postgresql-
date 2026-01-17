@@ -8,6 +8,7 @@ import {
   Package,
   Boxes,
   Users,
+  Plus,
 } from "lucide-react";
 
 export type SidebarItem = {
@@ -15,6 +16,7 @@ export type SidebarItem = {
   href: string;
   icon: React.ElementType;
   adminOnly?: boolean;
+  customerOnly?: boolean;
 };
 
 export const SidebarNav: SidebarItem[] = [
@@ -23,21 +25,31 @@ export const SidebarNav: SidebarItem[] = [
     label: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
+    customerOnly: true,
+  },
+  {
+    label: "Dashboard Admin",
+    href: "/dashboard/admin/dashboard",
+    icon: LayoutDashboard,
+    adminOnly: true,
   },
   {
     label: "Produtos",
     href: "/products",
     icon: Boxes,
+    customerOnly: true,
   },
   {
     label: "Pedidos",
     href: "/dashboard/orders",
     icon: ShoppingCart,
+    customerOnly: true,
   },
   {
     label: "Pagamentos",
     href: "/dashboard/payments",
     icon: CreditCard,
+    customerOnly: true,
   },
   {
     label: "Perfil",
@@ -48,13 +60,19 @@ export const SidebarNav: SidebarItem[] = [
   // ADMIN
   {
     label: "Gerenciar Produtos",
-    href: "/admin/products",
+    href: "/dashboard/admin/products",
     icon: Package,
     adminOnly: true,
   },
   {
+    label: "Adicionar Produtos",
+    href: "/dashboard/admin/products/new",
+    icon: Plus,
+    adminOnly: true,
+  },
+  {
     label: "Usuários",
-    href: "/admin/users",
+    href: "/dashboard/admin/users",
     icon: Users,
     adminOnly: true,
   },

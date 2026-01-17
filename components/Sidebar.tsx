@@ -14,6 +14,7 @@ type SidebarProps = {
 export default function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
   const isAdmin = user?.role === "ADMIN";
+  const isCustomer = user?.role === "CUSTOMER";
 
   return (
     <aside className="hidden md:flex w-64 flex-col border-r bg-white dark:bg-neutral-900">
@@ -29,8 +30,9 @@ export default function Sidebar({ user }: SidebarProps) {
 
       {/* Nav */}
       <nav className="flex-1 p-4 space-y-1 text-sm">
-        {SidebarNav.map(({ label, href, icon: Icon, adminOnly }) => {
+        {SidebarNav.map(({ label, href, icon: Icon, adminOnly, customerOnly }) => {
           if (adminOnly && !isAdmin) return null;
+          if (customerOnly && !isCustomer) return null;
 
           const active =
             pathname === href || pathname.startsWith(`${href}/`);

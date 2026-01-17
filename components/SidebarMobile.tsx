@@ -15,6 +15,7 @@ type SidebarMobileProps = {
 export default function SidebarMobile({ user }: SidebarMobileProps) {
   const [open, setOpen] = useState(false);
   const isAdmin = user.role === "ADMIN";
+  const isCustomer = user.role === "CUSTOMER";
 
   return (
     <>
@@ -66,8 +67,9 @@ export default function SidebarMobile({ user }: SidebarMobileProps) {
 
             {/* Navegação */}
             <nav className="flex-1 flex flex-col gap-1 text-sm">
-              {SidebarNav.map(({ label, href, icon: Icon, adminOnly }) => {
+              {SidebarNav.map(({ label, href, icon: Icon, adminOnly, customerOnly }) => {
                 if (adminOnly && !isAdmin) return null;
+                if (customerOnly && !isCustomer) return null;
 
                 return (
                   <Link

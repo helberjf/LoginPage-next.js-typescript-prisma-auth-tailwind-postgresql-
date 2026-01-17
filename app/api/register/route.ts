@@ -1,9 +1,14 @@
 // app/api/register/route.ts
+export const runtime = "nodejs";
+
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { registerSchema } from "@/lib/auth/validation";
 import { ZodError } from "zod";
+import { generateToken } from "@/lib/token";
+import { sendEmail } from "@/lib/mailgun";
+import { verificationEmailTemplate } from "@/lib/email-templates/verification";
 
 // ================= Utils =================
 
@@ -58,6 +63,10 @@ export async function POST(req: Request) {
     // 🔐 HASH DA SENHA
     const passwordHash = await bcrypt.hash(data.password, 10);
 
+    // 🔑 TOKEN DE VERIFICAÇÃO
+    const token = generateToken();
+    const expires = new Date(Date.now() + 1000 * 60 * 60 * 24); // 24h
+
     await prisma.$transaction(async tx => {
       const user = await tx.user.create({
         data: {
@@ -79,11 +88,10 @@ export async function POST(req: Request) {
         },
       });
 
-      // 🏠 ENDEREÇO
       await tx.address.create({
         data: {
           userId: user.id,
-          zipCode: data.address.zipCode ?? "", // ✅ NORMALIZA
+          zipCode: data.address.zipCode,
           street: data.address.street,
           number: data.address.number,
           complement: data.address.complement,
@@ -94,16 +102,29 @@ export async function POST(req: Request) {
           isDefault: true,
         },
       });
+
+      // 🧾 TOKEN DE VERIFICAÇÃO
+      await tx.verificationToken.create({
+        data: {
+          identifier: email,
+          token,
+          expires,
+          type: "VERIFY_EMAIL",
+        },
+      });
     });
 
-    await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL}/api/send-verification-email`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      }
-    );
+    // 📧 ENVIO DE EMAIL (FORA DA TRANSAÇÃO)
+    const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL}/verify-email?token=${token}`;
+
+    await sendEmail({
+      to: email,
+      subject: "Confirme seu email",
+      html: verificationEmailTemplate({
+        verifyUrl,
+        appName: "Seu App",
+      }),
+    });
 
     return NextResponse.json(
       { message: "Usuário registrado com sucesso" },

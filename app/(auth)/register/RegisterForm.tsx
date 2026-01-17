@@ -31,7 +31,6 @@ function hasSurname(name: string) {
   return parts.length >= 2 && parts.every(p => p.length >= 2);
 }
 
-
 function onlyDigits(v: string) {
   return v.replace(/\D/g, "");
 }
@@ -89,6 +88,21 @@ export default function RegisterForm() {
   const cepDigits = onlyDigits(form.zipCode);
   const cepReady = cepDigits.length === 8 && !cepError;
 
+  /* ========= VALIDAÇÕES (ACRÉSCIMO) ========= */
+  const nameValid = hasSurname(form.name);
+  const emailValid = form.email.length > 3;
+  const passwordValid = form.password.length >= 8;
+  const confirmValid = passwordValid && form.password === form.confirm;
+  const phoneValid = onlyDigits(form.phone).length >= 7;
+
+  const formValid =
+    nameValid &&
+    emailValid &&
+    passwordValid &&
+    confirmValid &&
+    phoneValid &&
+    cepReady;
+
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) {
@@ -128,35 +142,10 @@ export default function RegisterForm() {
     e.preventDefault();
     setError(null);
 
-    if (!cepReady) {
-      setError("Informe um CEP válido.");
-      return;
-    }
-
-    if (form.password !== form.confirm) {
-      setError("As senhas não coincidem.");
-      return;
-    }
-
-    if (form.cpf && !isValidCPF(form.cpf)) {
-      setError("CPF inválido.");
-      return;
-    }
+    if (!formValid) return;
 
     const phoneDigits = onlyDigits(form.phone);
-
-    if (phoneDigits.length < 7) {
-      setError("Telefone deve ter no mínimo 7 dígitos.");
-      return;
-    }
-
-    let phoneE164: string;
-    try {
-      phoneE164 = toE164(form.phoneCountry, phoneDigits);
-    } catch (err: any) {
-      setError(err.message);
-      return;
-    }
+    const phoneE164 = toE164(form.phoneCountry, phoneDigits);
 
     setLoading(true);
     try {
@@ -164,25 +153,8 @@ export default function RegisterForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: form.name,
-          email: form.email,
-          password: form.password,
-          confirm: form.confirm,
-          birthDate: form.birthDate,
-          gender: form.gender,
-          cpf: form.cpf || undefined,
-          phoneCountry: form.phoneCountry,
+          ...form,
           phone: phoneE164,
-          address: {
-            zipCode: cepDigits,
-            street: form.street,
-            number: form.number,
-            complement: form.complement || undefined,
-            district: form.district,
-            city: form.city,
-            state: form.state,
-            country: "BR",
-          },
         }),
       });
 
@@ -200,8 +172,7 @@ export default function RegisterForm() {
     }
   }
 
-  const base =
-    "w-full rounded-md border px-2 py-1 text-[12px]";
+  const base = "w-full rounded-md border px-2 py-1 text-[12px]";
   const input =
     `${base} border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950`;
   const readonly =
@@ -212,7 +183,14 @@ export default function RegisterForm() {
     <form onSubmit={handleSubmit} className="space-y-1">
       {/* NOME */}
       <div className="space-y-[1px]">
-        <span className={label}>Nome completo</span>
+        <span className={label}>
+          Nome completo{" "}
+          {form.name && (
+            <span className={nameValid ? "text-green-600" : "text-red-600"}>
+              {nameValid ? "✔" : "✖"}
+            </span>
+          )}
+        </span>
         <input
           name="name"
           placeholder="Maria da Silva"
@@ -222,7 +200,6 @@ export default function RegisterForm() {
           required
         />
       </div>
-
       {/* EMAIL */}
       <div className="space-y-[1px]">
         <span className={label}>Email</span>
@@ -436,7 +413,7 @@ export default function RegisterForm() {
       {/* CTA */}
       <div className="mt-2 space-y-1">
         <button
-          disabled={loading || !cepReady}
+          disabled={loading || !formValid}
           className="w-full rounded-md bg-blue-600 text-white py-1.5 text-sm disabled:opacity-50"
         >
           {loading ? "Criando..." : "Criar conta"}

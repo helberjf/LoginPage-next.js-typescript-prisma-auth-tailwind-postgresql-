@@ -29,7 +29,11 @@ const productCreateSchema = z.object({
   active: z.boolean().optional(),
 });
 
-const productUpdateSchema = productCreateSchema.partial();
+const productUpdateSchema = productCreateSchema
+  .partial()
+  .extend({
+    id: z.string().min(1),
+  });
 
 /**
  * GET
@@ -41,13 +45,32 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const id = url.searchParams.get("id");
+  const q = url.searchParams.get("q");
 
   if (id) {
-    const product = await prisma.product.findUnique({ where: { id } });
+    const product = await prisma.product.findUnique({
+      where: { id },
+    });
+
+    if (!product) {
+      return NextResponse.json(
+        { error: "Product not found" },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json(product);
   }
 
   const products = await prisma.product.findMany({
+    where: q
+      ? {
+          OR: [
+            { name: { contains: q, mode: "insensitive" } },
+            { description: { contains: q, mode: "insensitive" } },
+          ],
+        }
+      : undefined,
     orderBy: { createdAt: "desc" },
   });
 
@@ -76,8 +99,8 @@ export async function POST(request: Request) {
 
   const created = await prisma.product.create({
     data: {
-      name: data.name,
-      description: data.description ?? "",
+      name: data.name.trim(),
+      description: data.description?.trim() ?? "",
       priceCents: data.priceCents,
       stock: data.stock ?? 0,
       active: data.active ?? true,
@@ -96,11 +119,8 @@ export async function PUT(request: Request) {
   }
 
   const body = await request.json();
-  if (!body.id) {
-    return NextResponse.json({ error: "id is required" }, { status: 400 });
-  }
-
   const parsed = productUpdateSchema.safeParse(body);
+
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.flatten() },
@@ -108,12 +128,21 @@ export async function PUT(request: Request) {
     );
   }
 
-  const updated = await prisma.product.update({
-    where: { id: body.id },
-    data: parsed.data,
-  });
+  const { id, ...data } = parsed.data;
 
-  return NextResponse.json(updated);
+  try {
+    const updated = await prisma.product.update({
+      where: { id },
+      data,
+    });
+
+    return NextResponse.json(updated);
+  } catch {
+    return NextResponse.json(
+      { error: "Product not found" },
+      { status: 404 }
+    );
+  }
 }
 
 /**
@@ -124,14 +153,19 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const url = new URL(request.url);
-  const id = url.searchParams.get("id");
+  const id = new URL(request.url).searchParams.get("id");
 
   if (!id) {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
   }
 
-  await prisma.product.delete({ where: { id } });
-
-  return NextResponse.json({ ok: true });
+  try {
+    await prisma.product.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json(
+      { error: "Product not found" },
+      { status: 404 }
+    );
+  }
 }
