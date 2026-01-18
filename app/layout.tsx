@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import { auth } from "@/auth";
 import SidebarMobile from "@/components/SidebarMobile";
 import { SidebarProvider } from "@/contexts/SidebarContext";
+import { CartProvider } from "@/contexts/CartContext";
 
 export const metadata: Metadata = {
   title: "Sistema de Venda Online",
@@ -23,15 +24,18 @@ export default async function RootLayout({
     <html lang="pt-BR" suppressHydrationWarning>
       <body className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
         <Providers>
-          <SidebarProvider>
-            {/* Navbar COMPLETO, sem reduzir nada */}
-            <Navbar />
-            
-            {/* SidebarMobile para todos os usuários */}
-            <SidebarMobile user={session?.user || undefined} />
-            
-            {children}
-          </SidebarProvider>
+          <CartProvider>
+            <SidebarProvider>
+              {/* Navbar COMPLETO, sem reduzir nada */}
+              <Navbar />
+              
+              {/* SidebarMobile para todos os usuários */}
+              <SidebarMobile user={session?.user || undefined} />
+              
+              {/* Main content */}
+              {children}
+            </SidebarProvider>
+          </CartProvider>
         </Providers>
       </body>
     </html>

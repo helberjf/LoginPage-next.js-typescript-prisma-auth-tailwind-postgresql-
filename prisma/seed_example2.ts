@@ -76,10 +76,7 @@ async function main() {
       status: "ACTIVE",
       emailVerified: new Date(),
       profile: {
-        create: { 
-          gender: "OTHER",
-          phone: "+5532999887766",
-        },
+        create: { gender: "OTHER" },
       },
       addresses: {
         create: {
@@ -100,13 +97,12 @@ async function main() {
   console.log("✅ Customer criado/atualizado:", customer.email);
 
   // =========================================================
-  // 2.5) CATEGORY (COM ATENDIMENTO)
+  // 2.5) CATEGORY (ADICIONADO — SEM ALTERAR O RESTO)
   // =========================================================
   const categories = [
     { name: "Roupas", slug: "roupas", description: "Vestuário em geral" },
     { name: "Calçados", slug: "calcados", description: "Tênis e calçados urbanos" },
     { name: "Acessórios", slug: "acessorios", description: "Mochilas e eletrônicos" },
-    { name: "Atendimento", slug: "atendimento", description: "Serviços de manutenção e conserto" },
     { name: "Outros", slug: "outros", description: "Outros produtos" },
   ];
 
@@ -124,7 +120,7 @@ async function main() {
   }
 
   const categoryList = await prisma.category.findMany({
-    where: { slug: { in: ["roupas", "calcados", "acessorios", "atendimento", "outros"] } },
+    where: { slug: { in: ["roupas", "calcados", "acessorios", "outros"] } },
     select: { id: true, slug: true },
   });
 
@@ -133,16 +129,11 @@ async function main() {
   const roupasId = categoryBySlug.get("roupas")!;
   const calcadosId = categoryBySlug.get("calcados")!;
   const acessoriosId = categoryBySlug.get("acessorios")!;
-  const atendimentoId = categoryBySlug.get("atendimento")!;
   const outrosId = categoryBySlug.get("outros")!;
 
   // =========================================================
   // 3) LIMPEZA (idempotência real)
   // =========================================================
-  await prisma.schedule.deleteMany({
-    where: { userId: customer.id },
-  });
-
   await prisma.order.deleteMany({
     where: {
       OR: [{ userId: customer.id }, { guestEmail: "guest@example.com" }],
@@ -154,7 +145,6 @@ async function main() {
     "Tênis Urbano",
     "Mochila Tech",
     "Fone Bluetooth",
-    "Conserto de Placa",
   ];
 
   const existingSeedProducts = await prisma.product.findMany({
@@ -177,7 +167,7 @@ async function main() {
   console.log("✅ Limpeza do seed concluída");
 
   // =========================================================
-  // 4) CRIA PRODUTOS (COM SERVIÇO DE CONSERTO)
+  // 4) CRIA PRODUTOS (APENAS categoryId ADICIONADO)
   // =========================================================
   const products = await prisma.product.createMany({
     data: [
@@ -237,20 +227,6 @@ async function main() {
         hasFreeShipping: true,
         couponCode: "SOM5",
       },
-      {
-        name: "Conserto de Placa",
-        description: "Serviço especializado de manutenção e conserto de placas eletrônicas. Diagnóstico completo, troca de componentes e testes de qualidade.",
-        priceCents: 15000,
-        stock: 999,
-        active: true,
-        categoryId: atendimentoId,
-        salesCount: 34,
-        ratingAverage: 4.8,
-        ratingCount: 67,
-        discountPercent: null,
-        hasFreeShipping: false,
-        couponCode: null,
-      },
     ],
   });
 
@@ -268,44 +244,35 @@ async function main() {
   const tenis = byName.get("Tênis Urbano")!;
   const mochila = byName.get("Mochila Tech")!;
   const fone = byName.get("Fone Bluetooth")!;
-  const conserto = byName.get("Conserto de Placa")!;
 
   // =========================================================
-  // 5) IMAGENS DO PRODUTO - IDs Verificados do Unsplash
+  // 5) IMAGENS DO PRODUTO (ProductImage) — compatível schema
   // =========================================================
   await prisma.productImage.createMany({
-    data: [
-      // Camiseta Premium - Camisetas dobradas e penduradas
-      { productId: tshirt.id, position: 0, url: unsplashPhoto("1521572163474-6864f9cf17ab") },
-      { productId: tshirt.id, position: 1, url: unsplashPhoto("1556821840-3a63f95609a7") },
-      { productId: tshirt.id, position: 2, url: unsplashPhoto("1503342217505-b0a15ec3261c") },
+  data: [
+    // Camiseta
+    { productId: tshirt.id, position: 0, url: unsplashPhoto("1520975958225-7f0f0a0ab262") },
+    { productId: tshirt.id, position: 1, url: unsplashPhoto("1521572163474-6864f9cf17ab") },
 
-      // Tênis Urbano - Sneakers modernos
-      { productId: tenis.id, position: 0, url: unsplashPhoto("1542291026-7eec264c27ff") },
-      { productId: tenis.id, position: 1, url: unsplashPhoto("1460353581641-37baddab0fa2") },
-      { productId: tenis.id, position: 2, url: unsplashPhoto("1549298916-b41d501d3772") },
+    // Tênis
+    { productId: tenis.id, position: 0, url: unsplashPhoto("1528701800489-20be9c76c00d") },
+    { productId: tenis.id, position: 1, url: unsplashPhoto("1542291026-7eec264c27ff") },
 
-      // Mochila Tech - Mochilas urbanas e tech
-      { productId: mochila.id, position: 0, url: unsplashPhoto("1553062407-98eeb64c6a62") },
-      { productId: mochila.id, position: 1, url: unsplashPhoto("1622560480605-d83c853bc5c3") },
-      { productId: mochila.id, position: 2, url: unsplashPhoto("1546938576-6e6a64f317cc") },
+    // Mochila
+    { productId: mochila.id, position: 0, url: unsplashPhoto("1526481280695-3c687fd643ed") },
+    { productId: mochila.id, position: 1, url: unsplashPhoto("1553062407-98eeb64c6a62") },
 
-      // Fone Bluetooth - Headphones/Earbuds
-      { productId: fone.id, position: 0, url: unsplashPhoto("1484704849700-f032a568e944") },
-      { productId: fone.id, position: 1, url: unsplashPhoto("1545127398-14699f92334b") },
-      { productId: fone.id, position: 2, url: unsplashPhoto("1590658165737-15a047b1f6ff") },
+    // Fone
+    { productId: fone.id, position: 0, url: unsplashPhoto("1484704849700-f032a568e944") },
+    { productId: fone.id, position: 1, url: unsplashPhoto("1518441902117-f0a75f2489a1") },
+  ],
+});
 
-      // Conserto de Placa - Eletrônica e circuitos
-      { productId: conserto.id, position: 0, url: unsplashPhoto("1581092160562-40aa08e78837") },
-      { productId: conserto.id, position: 1, url: unsplashPhoto("1518770660439-4636190af475") },
-      { productId: conserto.id, position: 2, url: unsplashPhoto("1581092335397-9583eb92d232") },
-    ],
-  });
 
   console.log("✅ Imagens criadas");
 
   // =========================================================
-  // 6) PEDIDOS (customer + guest) COM AGENDAMENTO
+  // 6) PEDIDOS (customer + guest)
   // =========================================================
 
   // Pedido 1 (customer) - PENDING
@@ -418,115 +385,11 @@ async function main() {
     select: { id: true, status: true },
   });
 
-  // Pedido 5 (customer) - PAID - Serviço de Conserto com Agendamento
-  const consertoTotalCents = conserto.priceCents;
-
-  const orderConserto = await prisma.order.create({
-    data: {
-      userId: customer.id,
-      status: "PAID",
-      totalCents: consertoTotalCents,
-      currency: "BRL",
-      items: {
-        create: [
-          { productId: conserto.id, quantity: 1, priceCents: conserto.priceCents },
-        ],
-      },
-      payments: {
-        create: [
-          {
-            method: "PIX",
-            status: "PAID",
-            amountCents: consertoTotalCents,
-            mpPaymentId: "MP_SEED_CONSERTO_001",
-            rawPayload: { seed: true },
-          },
-        ],
-      },
-    },
-    select: { id: true, status: true },
-  });
-
   console.log("✅ Pedidos criados:");
   console.log(" -", orderPending.id, orderPending.status);
   console.log(" -", orderPaid.id, orderPaid.status);
   console.log(" -", orderGuestCancelled.id, orderGuestCancelled.status);
   console.log(" -", orderRefunded.id, orderRefunded.status);
-  console.log(" -", orderConserto.id, orderConserto.status, "(Conserto de Placa)");
-
-  // =========================================================
-  // 7) AGENDAMENTOS (SCHEDULES)
-  // =========================================================
-
-  // Agendamento 1 - CONFIRMED para o conserto de placa
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(14, 0, 0, 0);
-  
-  const tomorrowEnd = new Date(tomorrow);
-  tomorrowEnd.setHours(16, 0, 0, 0);
-
-  const scheduleConfirmed = await prisma.schedule.create({
-    data: {
-      userId: customer.id,
-      orderId: orderConserto.id,
-      type: "SERVICE",
-      status: "CONFIRMED",
-      startAt: tomorrow,
-      endAt: tomorrowEnd,
-      notes: "Conserto de placa-mãe - Cliente aguardando orçamento detalhado após diagnóstico",
-      createdBy: "CUSTOMER",
-    },
-    select: { id: true, status: true, startAt: true },
-  });
-
-  // Agendamento 2 - PENDING sem pedido vinculado
-  const nextWeek = new Date();
-  nextWeek.setDate(nextWeek.getDate() + 7);
-  nextWeek.setHours(10, 0, 0, 0);
-  
-  const nextWeekEnd = new Date(nextWeek);
-  nextWeekEnd.setHours(11, 30, 0, 0);
-
-  const schedulePending = await prisma.schedule.create({
-    data: {
-      userId: customer.id,
-      type: "MEETING",
-      status: "PENDING",
-      startAt: nextWeek,
-      endAt: nextWeekEnd,
-      notes: "Reunião para orçamento de manutenção preventiva",
-      createdBy: "CUSTOMER",
-    },
-    select: { id: true, status: true, startAt: true },
-  });
-
-  // Agendamento 3 - COMPLETED (entrega realizada)
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  yesterday.setHours(15, 0, 0, 0);
-  
-  const yesterdayEnd = new Date(yesterday);
-  yesterdayEnd.setHours(15, 30, 0, 0);
-
-  const scheduleCompleted = await prisma.schedule.create({
-    data: {
-      userId: customer.id,
-      orderId: orderPaid.id,
-      type: "DELIVERY",
-      status: "COMPLETED",
-      startAt: yesterday,
-      endAt: yesterdayEnd,
-      notes: "Entrega realizada com sucesso - Mochila Tech",
-      createdBy: "ADMIN",
-    },
-    select: { id: true, status: true, startAt: true },
-  });
-
-  console.log("✅ Agendamentos criados:");
-  console.log(" -", scheduleConfirmed.id, scheduleConfirmed.status, "em", scheduleConfirmed.startAt.toISOString());
-  console.log(" -", schedulePending.id, schedulePending.status, "em", schedulePending.startAt.toISOString());
-  console.log(" -", scheduleCompleted.id, scheduleCompleted.status, "em", scheduleCompleted.startAt.toISOString());
 
   console.log("✅ Seed finalizada com sucesso.");
 }

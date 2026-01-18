@@ -2,11 +2,28 @@ import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 
 type PageProps = {
-  searchParams?: { orderId?: string };
+  searchParams?:
+    | Promise<{
+        orderId?: string;
+        paymentId?: string;
+        status?: string;
+        merchantOrderId?: string;
+      }>
+    | {
+        orderId?: string;
+        paymentId?: string;
+        status?: string;
+        merchantOrderId?: string;
+      };
 };
 
-export default function CheckoutSuccessPage({ searchParams }: PageProps) {
-  const orderId = searchParams?.orderId;
+export default async function CheckoutSuccessPage({ searchParams }: PageProps) {
+  const resolvedSearchParams = await Promise.resolve(searchParams);
+
+  const orderId = resolvedSearchParams?.orderId;
+  const paymentId = resolvedSearchParams?.paymentId;
+  const status = resolvedSearchParams?.status;
+  const merchantOrderId = resolvedSearchParams?.merchantOrderId;
 
   return (
     <main className="min-h-screen bg-neutral-50 dark:bg-neutral-950 p-6">
@@ -28,6 +45,37 @@ export default function CheckoutSuccessPage({ searchParams }: PageProps) {
             <span className="font-medium text-neutral-900 dark:text-neutral-100">
               {orderId}
             </span>
+          </div>
+        ) : null}
+
+        {paymentId || status || merchantOrderId ? (
+          <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm dark:border-neutral-800 dark:bg-neutral-800/30 space-y-1">
+            {paymentId ? (
+              <div>
+                <span className="text-neutral-600 dark:text-neutral-400">PaymentId:</span>{" "}
+                <span className="font-medium text-neutral-900 dark:text-neutral-100">
+                  {paymentId}
+                </span>
+              </div>
+            ) : null}
+
+            {status ? (
+              <div>
+                <span className="text-neutral-600 dark:text-neutral-400">Status:</span>{" "}
+                <span className="font-medium text-neutral-900 dark:text-neutral-100">
+                  {status}
+                </span>
+              </div>
+            ) : null}
+
+            {merchantOrderId ? (
+              <div>
+                <span className="text-neutral-600 dark:text-neutral-400">MerchantOrderId:</span>{" "}
+                <span className="font-medium text-neutral-900 dark:text-neutral-100">
+                  {merchantOrderId}
+                </span>
+              </div>
+            ) : null}
           </div>
         ) : null}
 

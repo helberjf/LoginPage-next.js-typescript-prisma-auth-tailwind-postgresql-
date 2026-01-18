@@ -29,6 +29,11 @@ type Product = {
   discountPercent?: number | null;
   hasFreeShipping?: boolean;
 
+  category?: {
+    slug: string;
+    name: string;
+  };
+
   images?: {
     url: string;
     position?: number;
@@ -68,7 +73,7 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-neutral-50 dark:bg-neutral-950 px-4 py-6 space-y-10">
+    <main className="min-h-screen bg-neutral-50 dark:bg-neutral-950 px-4 py-4 sm:py-6 space-y-6 sm:space-y-10">
 
       {/* LOGIN COMPACTO (MOBILE TOGGLE) */}
       <section
@@ -152,7 +157,7 @@ export default function Home() {
       </section>
 
       {/* PRODUTOS */}
-      <section className="max-w-7xl mx-auto space-y-4 px-1 sm:px-0">
+      <section className="max-w-7xl mx-auto space-y-3 sm:space-y-4 px-1 sm:px-0">
         <header className="text-center space-y-1">
           <h2 className="text-xl font-bold">
             Produtos disponíveis
@@ -167,7 +172,6 @@ export default function Home() {
             <ProductCard
               key={product.id}
               product={product}
-              isLogged={!!session}
             />
           ))}
         </div>

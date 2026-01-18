@@ -142,7 +142,6 @@ async function ProductGrid({ searchQuery }: { searchQuery?: string }) {
     <ProductCard
       key={product.id}
       product={product}
-      isLogged={isLogged}
     />
   ));
 }

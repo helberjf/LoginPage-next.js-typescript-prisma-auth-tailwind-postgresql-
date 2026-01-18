@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ShoppingCart } from "lucide-react";
 import type { Session } from "next-auth";
 
 import SignOutButton from "@/components/SignOutButton";
@@ -54,6 +55,13 @@ export default function Sidebar({ user }: SidebarProps) {
 
       {/* Footer */}
       <div className="p-4 border-t space-y-2">
+        <Link
+          href="/checkout"
+          className="flex items-center gap-3 px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition font-medium text-sm"
+        >
+          <ShoppingCart size={18} />
+          <span>Carrinho</span>
+        </Link>
         <ThemeSwitcher />
         <SignOutButton className="w-full justify-start" />
       </div>

@@ -4,7 +4,7 @@
 import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { X, Boxes, Grid3X3, Phone, LogIn } from "lucide-react";
+import { X, Boxes, Grid3X3, Phone, LogIn, ShoppingCart, Calendar, UserPlus } from "lucide-react";
 import type { Session } from "next-auth";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -26,12 +26,17 @@ export default function SidebarMobile({ user }: SidebarMobileProps) {
 
   const items = useMemo(() => {
     if (!user) {
-      // Usuário não logado - mostrar apenas links públicos
+      // Usuário não logado (visitante) - mostrar links públicos + agendamentos
       return [
         {
           label: "Entrar",
           href: "/login",
           icon: LogIn,
+        },
+        {
+          label: "Criar conta",
+          href: "/register",
+          icon: UserPlus,
         },
         {
           label: "Produtos",
@@ -44,6 +49,11 @@ export default function SidebarMobile({ user }: SidebarMobileProps) {
           icon: Grid3X3,
         },
         {
+          label: "Meus Agendamentos",
+          href: "/schedules",
+          icon: Calendar,
+        },
+        {
           label: "Contato",
           href: "/contact",
           icon: Phone,
@@ -51,12 +61,33 @@ export default function SidebarMobile({ user }: SidebarMobileProps) {
       ];
     }
 
-    // Usuário logado - manter menu original (mesma lógica do Sidebar.ts)
-    return SidebarNav.filter(({ adminOnly, customerOnly }) => {
+    // Usuário logado - adicionar agendamentos ao menu existente
+    const navItems = SidebarNav.filter(({ adminOnly, customerOnly }) => {
       if (adminOnly && !isAdmin) return false;
       if (customerOnly && !isCustomer) return false;
       return true;
     });
+
+    // Adicionar link de agendamentos conforme a role
+    if (isAdmin) {
+      // Admin vê todos os agendamentos
+      navItems.push({
+        label: "Todos Agendamentos",
+        href: "/dashboard/schedules",
+        icon: Calendar,
+        adminOnly: true,
+      });
+    } else if (isCustomer) {
+      // Customer vê apenas seus agendamentos
+      navItems.push({
+        label: "Meus Agendamentos",
+        href: "/schedules",
+        icon: Calendar,
+        customerOnly: true,
+      });
+    }
+
+    return navItems;
   }, [user, isAdmin, isCustomer]);
 
   const initial = (user?.name || "V").trim().charAt(0).toUpperCase();
@@ -122,6 +153,14 @@ export default function SidebarMobile({ user }: SidebarMobileProps) {
               </nav>
 
               <footer className="pt-4 mt-4 border-t border-neutral-200 dark:border-neutral-800 space-y-2">
+                <Link
+                  href="/checkout"
+                  onClick={closeSidebar}
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition font-medium"
+                >
+                  <ShoppingCart size={18} />
+                  <span>Carrinho</span>
+                </Link>
                 <ThemeSwitcher />
                 {user && <SignOutButton className="w-full justify-start" />}
                 {user && (

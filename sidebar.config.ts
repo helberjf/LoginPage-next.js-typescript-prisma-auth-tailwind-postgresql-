@@ -9,6 +9,7 @@ import {
   Users,
   BarChart3,
   Settings,
+  Calendar,
 } from "lucide-react";
 
 export type NavItem = {
@@ -29,6 +30,11 @@ export const sidebarNav: NavItem[] = [
     label: "My Orders",
     href: "/orders",
     icon: ShoppingBag,
+  },
+  {
+    label: "Schedules",
+    href: "/dashboard/schedules",
+    icon: Calendar,
   },
   {
     label: "Payments",
@@ -57,6 +63,12 @@ export const sidebarNav: NavItem[] = [
     label: "Orders",
     href: "/admin/orders",
     icon: ClipboardList,
+    adminOnly: true,
+  },
+  {
+    label: "Schedules",
+    href: "/dashboard/admin/schedules",
+    icon: Calendar,
     adminOnly: true,
   },
   {

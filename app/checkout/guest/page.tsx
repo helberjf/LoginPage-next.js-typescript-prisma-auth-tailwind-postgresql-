@@ -1,10 +1,16 @@
-import { Suspense } from "react";
-import GuestCheckoutClient from "./GuestCheckoutClient";
+import { redirect } from "next/navigation";
 
-export default function Page() {
-  return (
-    <Suspense fallback={<div className="p-6">Carregando checkout...</div>}>
-      <GuestCheckoutClient />
-    </Suspense>
-  );
+type PageProps = {
+  searchParams?: Promise<{ productId?: string }> | { productId?: string };
+};
+
+export default async function Page({ searchParams }: PageProps) {
+  const resolvedSearchParams = await Promise.resolve(searchParams);
+  const productId = resolvedSearchParams?.productId;
+
+  if (productId) {
+    redirect(`/products/${productId}`);
+  }
+
+  redirect("/products");
 }

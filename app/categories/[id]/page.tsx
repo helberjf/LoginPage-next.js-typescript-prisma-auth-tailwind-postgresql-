@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Package, Grid3X3 } from "lucide-react";
-import { getSession } from "next-auth/react";
 import ProductCard from "@/components/products/ProductCard";
 
 export default async function CategoryPage({
@@ -41,9 +40,6 @@ export default async function CategoryPage({
   if (!category) {
     notFound();
   }
-
-  const session = await getSession();
-  const isLogged = !!session?.user;
 
   return (
     <section className="space-y-6 p-4 sm:p-6 max-w-6xl mx-auto">
@@ -104,7 +100,7 @@ export default async function CategoryPage({
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {category.products.map((product) => (
-              <ProductCard key={product.id} product={product} isLogged={isLogged} />
+              <ProductCard key={product.id} product={product} />
             ))}
           </div>
         )}

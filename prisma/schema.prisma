@@ -55,6 +55,20 @@ enum VerificationTokenType {
   VERIFY_EMAIL
 }
 
+enum ScheduleStatus {
+  PENDING     // criado, aguardando confirmação
+  CONFIRMED   // confirmado
+  CANCELLED   // cancelado
+  COMPLETED   // realizado
+  NO_SHOW     // não compareceu
+}
+
+enum ScheduleType {
+  SERVICE     // serviço/agendamento comum
+  DELIVERY    // entrega
+  MEETING     // reunião/atendimento
+}
+
 ////////////////////
 // USER (IDENTITY / AUTH)
 ////////////////////
@@ -81,6 +95,8 @@ model User {
 
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
+
+  schedules     Schedule[]
 
   @@index([email])
   @@index([status])
@@ -228,6 +244,7 @@ model Order {
 
   items         OrderItem[]
   payments      Payment[]
+  schedules     Schedule[]
 
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -354,4 +371,37 @@ model WebhookEvent {
   createdAt   DateTime @default(now())
 
   @@index([providerId])
+}
+
+model Schedule {
+  id          String         @id @default(cuid())
+
+  // Quem agendou
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Tipo e status
+  type        ScheduleType   @default(SERVICE)
+  status      ScheduleStatus @default(PENDING)
+
+  // Datas
+  startAt     DateTime
+  endAt       DateTime
+
+  // Observações livres
+  notes       String?
+
+  // Quem criou (admin/customer)
+  createdBy   Role
+
+  // (Opcional) vínculo futuro com pedido
+  orderId     String?
+  order       Order?         @relation(fields: [orderId], references: [id])
+
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([startAt])
 }

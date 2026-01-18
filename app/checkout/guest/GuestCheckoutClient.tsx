@@ -78,11 +78,11 @@ export default function GuestCheckoutClient() {
   }
 
   return (
-    <main className="min-h-screen bg-neutral-50 p-6">
-      <div className="max-w-md mx-auto bg-white border rounded-xl p-6 space-y-6">
+    <main className="min-h-screen bg-neutral-50 dark:bg-neutral-950 p-6">
+      <div className="max-w-md mx-auto bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl p-6 space-y-6">
         <header>
-          <h1 className="text-2xl font-bold">Dados do comprador</h1>
-          <p className="text-sm text-neutral-500">
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">Dados do comprador</h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
             Informe seus dados para continuar o pagamento
           </p>
         </header>
@@ -90,79 +90,79 @@ export default function GuestCheckoutClient() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* inputs */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Nome</label>
-            <input name="name" required className="w-full rounded-md border px-3 py-2 text-sm" />
+            <label className="text-sm font-medium text-neutral-900 dark:text-neutral-100">Nome</label>
+            <input name="name" required className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100" />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Email</label>
-            <input name="email" type="email" required className="w-full rounded-md border px-3 py-2 text-sm" />
+            <label className="text-sm font-medium text-neutral-900 dark:text-neutral-100">Email</label>
+            <input name="email" type="email" required className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100" />
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium">CPF</label>
-              <input name="cpf" required className="w-full rounded-md border px-3 py-2 text-sm" />
+              <label className="text-sm font-medium text-neutral-900 dark:text-neutral-100">CPF</label>
+              <input name="cpf" required className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100" />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Telefone</label>
-              <input name="phone" required className="w-full rounded-md border px-3 py-2 text-sm" />
+              <label className="text-sm font-medium text-neutral-900 dark:text-neutral-100">Telefone</label>
+              <input name="phone" required className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100" />
             </div>
           </div>
 
           <div className="pt-2">
-            <div className="text-sm font-semibold">Endereço</div>
+            <div className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Endereço</div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Rua</label>
-            <input name="street" required className="w-full rounded-md border px-3 py-2 text-sm" />
+            <label className="text-sm font-medium text-neutral-900 dark:text-neutral-100">Rua</label>
+            <input name="street" required className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100" />
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Número</label>
-              <input name="number" required className="w-full rounded-md border px-3 py-2 text-sm" />
+              <label className="text-sm font-medium text-neutral-900 dark:text-neutral-100">Número</label>
+              <input name="number" required className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100" />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Complemento</label>
-              <input name="complement" className="w-full rounded-md border px-3 py-2 text-sm" />
+              <label className="text-sm font-medium text-neutral-900 dark:text-neutral-100">Complemento</label>
+              <input name="complement" className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100" />
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Bairro</label>
-            <input name="district" required className="w-full rounded-md border px-3 py-2 text-sm" />
+            <label className="text-sm font-medium text-neutral-900 dark:text-neutral-100">Bairro</label>
+            <input name="district" required className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100" />
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Cidade</label>
-              <input name="city" required className="w-full rounded-md border px-3 py-2 text-sm" />
+              <label className="text-sm font-medium text-neutral-900 dark:text-neutral-100">Cidade</label>
+              <input name="city" required className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100" />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Estado</label>
-              <input name="state" required className="w-full rounded-md border px-3 py-2 text-sm" />
+              <label className="text-sm font-medium text-neutral-900 dark:text-neutral-100">Estado</label>
+              <input name="state" required className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100" />
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium">CEP</label>
-              <input name="zipCode" required className="w-full rounded-md border px-3 py-2 text-sm" />
+              <label className="text-sm font-medium text-neutral-900 dark:text-neutral-100">CEP</label>
+              <input name="zipCode" required className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100" />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">País</label>
-              <input name="country" defaultValue="BR" className="w-full rounded-md border px-3 py-2 text-sm" />
+              <label className="text-sm font-medium text-neutral-900 dark:text-neutral-100">País</label>
+              <input name="country" defaultValue="BR" className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100" />
             </div>
           </div>
 
           {error ? (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
               {error}
             </div>
           ) : null}

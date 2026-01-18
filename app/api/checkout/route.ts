@@ -11,13 +11,22 @@ type CheckoutItem = {
 };
 
 type CheckoutBody = {
-  totalCents: number;
   items: CheckoutItem[];
   guest?: {
     name: string;
     email: string;
     cpf: string;
     phone: string;
+    address?: {
+      street: string;
+      number: string;
+      complement?: string | null;
+      district: string;
+      city: string;
+      state: string;
+      zipCode: string;
+      country: string;
+    };
   };
 };
 
@@ -160,8 +169,52 @@ export async function POST(req: Request) {
     productIdForRedirect = product.id;
   } else {
     const body = parsedLegacy.data as CheckoutBody;
-    items = body.items;
-    totalCents = body.totalCents;
+    
+    // Fetch all products to get current prices
+    const productIds = body.items.map(item => item.productId);
+    const products = await prisma.product.findMany({
+      where: {
+        id: { in: productIds },
+        active: true,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        priceCents: true,
+        discountPercent: true,
+        stock: true,
+      },
+    });
+
+    if (products.length !== body.items.length) {
+      return NextResponse.json(
+        { error: "Um ou mais produtos não foram encontrados" },
+        { status: 400 }
+      );
+    }
+
+    // Check stock and build items with prices
+    items = body.items.map((cartItem) => {
+      const product = products.find(p => p.id === cartItem.productId);
+      if (!product) {
+        throw new Error(`Produto ${cartItem.productId} não encontrado`);
+      }
+      if (product.stock < cartItem.quantity) {
+        throw new Error(`Estoque insuficiente para o produto ${cartItem.productId}`);
+      }
+      
+      const finalPrice = product.discountPercent && product.discountPercent > 0
+        ? Math.round(product.priceCents * (1 - product.discountPercent / 100))
+        : product.priceCents;
+        
+      return {
+        productId: cartItem.productId,
+        quantity: cartItem.quantity,
+        priceCents: finalPrice,
+      };
+    });
+
+    totalCents = items.reduce((sum, item) => sum + (item.priceCents * item.quantity), 0);
   }
 
   // ===== CRIAÇÃO DO PEDIDO =====
@@ -198,6 +251,8 @@ export async function POST(req: Request) {
   try {
     const title = productIdForRedirect ? "Compra" : "Pedido";
 
+    const webhookUrl = process.env.MP_WEBHOOK_URL ?? `${origin}/api/mercadopago/webhook`;
+
     const preferenceBody = {
       items: items.map((it) => ({
         title,
@@ -206,6 +261,7 @@ export async function POST(req: Request) {
         currency_id: "BRL",
       })),
       external_reference: order.id,
+      notification_url: webhookUrl,
       payer: guest
         ? {
             name: guest.name,
@@ -222,9 +278,9 @@ export async function POST(req: Request) {
           }
         : undefined,
       back_urls: {
-        success: `${origin}/checkout/success?orderId=${order.id}`,
-        pending: `${origin}/checkout/success?orderId=${order.id}`,
-        failure: `${origin}/checkout/success?orderId=${order.id}`,
+        success: `${origin}/api/feedback?orderId=${order.id}`,
+        pending: `${origin}/api/feedback?orderId=${order.id}`,
+        failure: `${origin}/api/feedback?orderId=${order.id}`,
       },
       auto_return: "approved",
     };

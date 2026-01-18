@@ -10,6 +10,7 @@ import {
   Users,
   Plus,
   LogOut,
+  Calendar,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 
@@ -48,6 +49,12 @@ export const SidebarNav: SidebarItem[] = [
     customerOnly: true,
   },
   {
+    label: "Agendamentos",
+    href: "/dashboard/schedules",
+    icon: Calendar,
+    customerOnly: true,
+  },
+  {
     label: "Pagamentos",
     href: "/dashboard/payments",
     icon: CreditCard,
@@ -82,6 +89,12 @@ export const SidebarNav: SidebarItem[] = [
     label: "Pedidos",
     href: "/dashboard/admin/orders",
     icon: ShoppingCart,
+    adminOnly: true,
+  },
+  {
+    label: "Agendamentos",
+    href: "/dashboard/admin/schedules",
+    icon: Calendar,
     adminOnly: true,
   },
   {

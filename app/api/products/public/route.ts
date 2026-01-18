@@ -1,3 +1,4 @@
+//app/api/products/public/route.ts
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -6,7 +7,7 @@ export async function GET() {
     where: {
       active: true,
       stock: {
-        gt: 0, // recomendado
+        gt: 0,
       },
       deletedAt: null,
     },
@@ -23,6 +24,12 @@ export async function GET() {
       ratingCount: true,
       discountPercent: true,
       hasFreeShipping: true,
+      category: {
+        select: {
+          slug: true,
+          name: true,
+        },
+      },
       images: {
         where: { position: 0 },
         select: { url: true, position: true },
