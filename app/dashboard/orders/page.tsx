@@ -6,6 +6,7 @@ import { ArrowUpRight, Search } from "lucide-react";
 
 import prisma from "@/lib/prisma";
 import { auth } from "@/auth";
+import { Prisma } from "@prisma/client";
 
 type PageProps = {
   searchParams?: Promise<{ status?: string; q?: string }>;
@@ -34,7 +35,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
   const status = normalizeStatus(sp.status);
   const q = (sp.q ?? "").trim();
 
-  const where: any = { deletedAt: null };
+  const where: Prisma.OrderWhereInput = { deletedAt: null };
 
   if (status) where.status = status;
 

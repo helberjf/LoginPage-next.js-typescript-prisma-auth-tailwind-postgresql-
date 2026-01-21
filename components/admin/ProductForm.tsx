@@ -103,8 +103,8 @@ export default function ProductForm({ productId, onSuccess }: Props) {
         const imgs: ProductImageInput[] = Array.isArray(p.images)
           ? p.images
               .slice()
-              .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
-              .map((img: any) => ({
+              .sort((a: ProductImageInput, b: ProductImageInput) => (a.position ?? 0) - (b.position ?? 0))
+              .map((img: ProductImageInput) => ({
                 url: String(img.url ?? ""),
                 position: Number(img.position ?? 0),
               }))
@@ -149,8 +149,8 @@ export default function ProductForm({ productId, onSuccess }: Props) {
         const next = [...prev, { url, position: prev.length }];
         return next.map((img, i) => ({ ...img, position: i }));
       });
-    } catch (e: any) {
-      setError(e?.message ?? "Falha no upload.");
+    } catch (e: unknown) {
+      setError((e as Error)?.message ?? "Falha no upload.");
     } finally {
       setUploading(false);
     }

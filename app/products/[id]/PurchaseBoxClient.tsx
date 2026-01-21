@@ -39,6 +39,13 @@ type CheckoutResponse = {
   error?: string;
 };
 
+type CepResponse = {
+  street: string;
+  district: string;
+  city: string;
+  state: string;
+};
+
 function onlyDigits(v: string) {
   return v.replace(/\D/g, "");
 }
@@ -154,12 +161,7 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
         return;
       }
 
-      const data = (await res.json()) as {
-        street: string;
-        district: string;
-        city: string;
-        state: string;
-      };
+      const data = await res.json() as CepResponse;
 
       setForm((p) => ({
         ...p,
@@ -168,21 +170,22 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
         city: data.city,
         state: data.state,
       }));
-    } catch {
+    } catch (fetchError) {
+      console.error("CEP fetch error:", fetchError);
       setCepError("Erro ao buscar CEP");
     } finally {
       setCepLoading(false);
     }
   }
 
-  async function startCheckout(payload: unknown) {
+  async function startCheckout(payload: Record<string, unknown>) {
     const res = await fetch("/api/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
 
-    const data = (await res.json()) as CheckoutResponse;
+    const data = await res.json() as CheckoutResponse;
 
     if (!res.ok || !data.redirectUrl) {
       throw new Error(data.error ?? "Erro ao iniciar pagamento");
@@ -259,7 +262,7 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
       
       alert(`Agendamento criado para ${scheduleForm.date} às ${scheduleForm.time}. Redirecionando para pagamento...`);
       
-      await startCheckout({
+      const payload: Record<string, unknown> = {
         productId,
         quantity: 1,
         schedule: {
@@ -267,15 +270,18 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
           time: scheduleForm.time,
           notes: scheduleForm.notes,
         },
-        ...(isLogged ? {} : {
-          guest: {
-            name: scheduleForm.name,
-            email: scheduleForm.email,
-            cpf: scheduleForm.cpf,
-            phone: scheduleForm.phone,
-          }
-        })
-      });
+      };
+
+      if (!isLogged) {
+        payload.guest = {
+          name: scheduleForm.name,
+          email: scheduleForm.email,
+          cpf: scheduleForm.cpf,
+          phone: scheduleForm.phone,
+        };
+      }
+
+      await startCheckout(payload);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao criar agendamento");
       setLoading(false);
@@ -295,6 +301,8 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
           className="w-full p-3 flex items-center justify-between text-left"
+          aria-expanded={isExpanded}
+          aria-label="Expandir opções de agendamento"
         >
           <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-green-900 dark:text-green-100">
             <Calendar className="h-4 w-4 text-green-600" />
@@ -364,7 +372,7 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
                 <button
                   type="submit"
                   disabled={loading || !scheduleFormValid}
-                  className="w-full rounded-md bg-green-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+                  className="w-full rounded-md bg-green-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   {loading ? "Processando..." : "Pagar via MercadoPago"}
                 </button>
@@ -386,6 +394,7 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
                       value={scheduleForm.name}
                       onChange={handleScheduleChange}
                       className={input}
+                      placeholder="Ex: João Silva"
                       required
                     />
                   </div>
@@ -401,6 +410,7 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
                       value={scheduleForm.email}
                       onChange={handleScheduleChange}
                       className={input}
+                      placeholder="seu@email.com"
                       required
                     />
                   </div>
@@ -417,6 +427,7 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
                       value={scheduleForm.cpf}
                       onChange={handleScheduleChange}
                       className={input}
+                      placeholder="000.000.000-00"
                       required
                     />
                   </div>
@@ -431,6 +442,7 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
                       value={scheduleForm.phone}
                       onChange={handleScheduleChange}
                       className={input}
+                      placeholder="(00) 00000-0000"
                       required
                     />
                   </div>
@@ -493,7 +505,7 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
                 <button
                   type="submit"
                   disabled={loading || !scheduleFormValid}
-                  className="w-full rounded-md bg-green-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+                  className="w-full rounded-md bg-green-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   {loading ? "Processando..." : "Pagar via MercadoPago"}
                 </button>
@@ -516,6 +528,8 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full p-3 flex items-center justify-between text-left"
+        aria-expanded={isExpanded}
+        aria-label="Expandir opções de compra"
       >
         <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-neutral-900 dark:text-neutral-100">
           <ShieldCheck className="h-4 w-4 text-emerald-600" />
@@ -538,7 +552,7 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
                 type="button"
                 disabled={loading}
                 onClick={handleLoggedCheckout}
-                className="w-full rounded-md bg-green-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+                className="w-full rounded-md bg-green-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
                 {loading ? "Redirecionando..." : "Pagar via MercadoPago"}
               </button>
@@ -560,6 +574,7 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
                     value={form.name}
                     onChange={handleChange}
                     className={input}
+                    placeholder="Ex: João Silva"
                     required
                   />
                 </div>
@@ -575,6 +590,7 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
                     value={form.email}
                     onChange={handleChange}
                     className={input}
+                    placeholder="seu@email.com"
                     required
                   />
                 </div>
@@ -591,6 +607,7 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
                     value={form.cpf}
                     onChange={handleChange}
                     className={input}
+                    placeholder="000.000.000-00"
                     required
                   />
                 </div>
@@ -605,6 +622,7 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
                     value={form.phone}
                     onChange={handleChange}
                     className={input}
+                    placeholder="(00) 00000-0000"
                     required
                   />
                 </div>
@@ -622,6 +640,7 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
                     onChange={handleChange}
                     onBlur={fetchCep}
                     className={input}
+                    placeholder="00000-000"
                     required
                   />
 
@@ -647,6 +666,7 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
                     value={form.number}
                     onChange={handleChange}
                     className={input}
+                    placeholder="123"
                     required
                     disabled={!cepReady}
                   />
@@ -685,6 +705,7 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
                       value={form.complement}
                       onChange={handleChange}
                       className={input}
+                      placeholder="Apto 101"
                     />
                   </div>
                 </div>
@@ -699,7 +720,7 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
               <button
                 type="submit"
                 disabled={loading || !formValid}
-                className="w-full rounded-md bg-green-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+                className="w-full rounded-md bg-green-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
                 {loading ? "Redirecionando..." : "Pagar via MercadoPago"}
               </button>

@@ -100,6 +100,58 @@ async function main() {
   console.log("✅ Customer criado/atualizado:", customer.email);
 
   // =========================================================
+// 2.1) EMPLOYEES / FUNCIONÁRIOS (STAFF) – SEM SENHA
+// =========================================================
+  const employee1 = await prisma.user.upsert({
+    where: { email: "funcionario1@example.com" },
+    update: {
+      role: "STAFF",
+      status: "ACTIVE",
+      emailVerified: null, // sem login
+    },
+    create: {
+      name: "Funcionário 1",
+      email: "funcionario1@example.com",
+      role: "STAFF",
+      status: "ACTIVE",
+      emailVerified: null,
+      profile: {
+        create: {
+          gender: "OTHER",
+          phone: "+5511981111111",
+        },
+      },
+    },
+    select: { id: true, email: true },
+  });
+
+  const employee2 = await prisma.user.upsert({
+    where: { email: "funcionario2@example.com" },
+    update: {
+      role: "STAFF",
+      status: "ACTIVE",
+      emailVerified: null,
+    },
+    create: {
+      name: "Funcionário 2",
+      email: "funcionario2@example.com",
+      role: "STAFF",
+      status: "ACTIVE",
+      emailVerified: null,
+      profile: {
+        create: {
+          gender: "OTHER",
+          phone: "+5511982222222",
+        },
+      },
+    },
+    select: { id: true, email: true },
+  });
+
+  console.log("✅ Funcionários criados:", employee1.email, employee2.email);
+
+
+  // =========================================================
   // 2.5) CATEGORY (COM ATENDIMENTO)
   // =========================================================
   const categories = [
@@ -469,6 +521,7 @@ async function main() {
   const scheduleConfirmed = await prisma.schedule.create({
     data: {
       userId: customer.id,
+      employeeId: employee1.id, // FUNCIONÁRIO 1
       orderId: orderConserto.id,
       type: "SERVICE",
       status: "CONFIRMED",
@@ -491,6 +544,7 @@ async function main() {
   const schedulePending = await prisma.schedule.create({
     data: {
       userId: customer.id,
+      employeeId: employee2.id,
       type: "MEETING",
       status: "PENDING",
       startAt: nextWeek,
@@ -512,6 +566,7 @@ async function main() {
   const scheduleCompleted = await prisma.schedule.create({
     data: {
       userId: customer.id,
+      employeeId: employee1.id,
       orderId: orderPaid.id,
       type: "DELIVERY",
       status: "COMPLETED",

@@ -1,9 +1,10 @@
-// components/products/ProductCard.tsx
 "use client";
 
 import Link from "next/link";
-import { Plus, Calendar } from "lucide-react";
+import { Plus, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
+import { useState } from "react";
+import { toast } from "sonner";
 
 type Product = {
   id: string;
@@ -32,24 +33,23 @@ type ProductCardProps = {
   product: Product;
 };
 
-export default function ProductCard({
-  product,
-}: ProductCardProps) {
+export default function ProductCard({ product }: ProductCardProps) {
   const { addItem } = useCart();
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  const mainImage =
-    product.images?.find(img => img.position === 0)?.url ??
-    product.images?.[0]?.url ??
-    "/placeholder.png";
+  const images = product.images && product.images.length > 0 
+    ? product.images.sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+    : [{ url: "/placeholder.png", position: 0 }];
+
+  const currentImage = images[currentImageIndex]?.url ?? "/placeholder.png";
+  const hasMultipleImages = images.length > 1;
 
   const basePrice = product.priceCents;
-
   const finalPrice =
     product.discountPercent && product.discountPercent > 0
       ? Math.round(basePrice * (1 - product.discountPercent / 100))
       : basePrice;
 
-  // Verifica se é um serviço/agendamento
   const isServiceSchedule = product.category?.slug === "atendimento";
 
   function handleAddToCart(e: React.MouseEvent) {
@@ -60,10 +60,31 @@ export default function ProductCard({
         id: product.id,
         name: product.name,
         priceCents: product.priceCents,
-        image: mainImage,
+        image: currentImage,
         discountPercent: product.discountPercent,
       });
+      toast.success(`${product.name} adicionado ao carrinho!`, {
+        description: "Continue comprando ou finalize seu pedido.",
+        action: {
+          label: "Ver carrinho",
+          onClick: () => {
+            // Aqui você pode adicionar navegação para o carrinho
+          },
+        },
+      });
     }
+  }
+
+  function handlePreviousImage(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  }
+
+  function handleNextImage(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
   }
 
   return (
@@ -72,11 +93,38 @@ export default function ProductCard({
       <div className="aspect-square bg-white dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 relative">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={mainImage}
+          src={currentImage}
           alt={product.name}
           className="w-full h-full object-contain"
           loading="lazy"
         />
+        
+        {/* Navegação de imagens */}
+        {hasMultipleImages && (
+          <>
+            <button
+              type="button"
+              onClick={handlePreviousImage}
+              className="absolute left-1 top-1/2 -translate-y-1/2 bg-white/80 dark:bg-neutral-800/80 hover:bg-white dark:hover:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-full p-1 shadow-md transition opacity-0 group-hover:opacity-100"
+              aria-label="Imagem anterior"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={handleNextImage}
+              className="absolute right-1 top-1/2 -translate-y-1/2 bg-white/80 dark:bg-neutral-800/80 hover:bg-white dark:hover:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-full p-1 shadow-md transition opacity-0 group-hover:opacity-100"
+              aria-label="Próxima imagem"
+            >
+              <ChevronRight size={14} />
+            </button>
+
+            {/* Indicador de posição */}
+            <div className="absolute bottom-1 left-1/2 -translate-x-1/2 bg-black/60 text-white px-1.5 py-0.5 rounded-full text-[9px] opacity-0 group-hover:opacity-100 transition">
+              {currentImageIndex + 1}/{images.length}
+            </div>
+          </>
+        )}
         
         {/* Botão + para adicionar ao carrinho OU ícone de calendário */}
         <button
@@ -86,7 +134,7 @@ export default function ProductCard({
             isServiceSchedule 
               ? "bg-green-600 hover:bg-green-700" 
               : "bg-blue-600 hover:bg-blue-700"
-          } text-white rounded-full p-2.5 shadow-lg transition opacity-0 group-hover:opacity-100`}
+          } text-white rounded-full p-2.5 shadow-lg transition sm:group-hover:opacity-100`}
           title={isServiceSchedule ? "Agendar serviço" : "Adicionar ao carrinho"}
         >
           {isServiceSchedule ? <Calendar size={18} /> : <Plus size={18} />}
@@ -95,9 +143,9 @@ export default function ProductCard({
 
       {/* INFO */}
       <div className="p-2 space-y-1">
-        <div className="text-xs line-clamp-2 text-neutral-800 dark:text-neutral-100">
+        <h3 className="text-xs line-clamp-2 text-neutral-800 dark:text-neutral-100 font-medium">
           {product.name}
-        </div>
+        </h3>
 
         <div className="text-[11px] text-neutral-500">
           ⭐ {(product.ratingAverage ?? 0).toFixed(1)} • {product.salesCount ?? 0} {isServiceSchedule ? "atendimentos" : "vendidos"}
@@ -108,16 +156,16 @@ export default function ProductCard({
         </div>
 
         {/* Badges em linha - sempre na mesma altura */}
-        <div className="flex items-center gap-1.5 flex-wrap min-h-[16px]">
+        <div className="flex items-center gap-1.5 flex-wrap min-h-4">
           {product.discountPercent && (
-            <div className="text-[11px] text-green-600 font-medium">
+            <span className="text-[11px] text-green-600 font-medium">
               {product.discountPercent}% OFF
-            </div>
+            </span>
           )}
           {product.hasFreeShipping && !isServiceSchedule && (
-            <div className="text-[11px] text-green-600 font-medium">
+            <span className="text-[11px] text-green-600 font-medium">
               Frete grátis
-            </div>
+            </span>
           )}
         </div>
 

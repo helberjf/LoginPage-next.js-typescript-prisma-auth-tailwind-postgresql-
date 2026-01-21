@@ -1,6 +1,4 @@
-// app/page.tsx
 "use client";
-
 import Link from "next/link";
 import { useSession, signIn } from "next-auth/react";
 import { useEffect, useState } from "react";
@@ -15,6 +13,12 @@ import {
 import { FcGoogle } from "react-icons/fc";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import ProductCard from "@/components/products/ProductCard";
+
+type Category = {
+  id: string;
+  name: string;
+  slug: string;
+};
 
 type Product = {
   id: string;
@@ -44,15 +48,37 @@ export default function Home() {
   const { data: session } = useSession();
   const [products, setProducts] = useState<Product[]>([]);
   const [showLoginCard, setShowLoginCard] = useState(true);
+  const [categoryId, setCategoryId] = useState("");
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
 
   useEffect(() => {
-    fetch("/api/products/public")
-      .then((res) => res.json())
-      .then(setProducts)
-      .catch(() => {});
+    (async () => {
+      try {
+        setLoadingCategories(true);
+        const res = await fetch("/api/categories");
+        const data = await res.json();
+        setCategories(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error("Failed to load categories:", e);
+      } finally {
+        setLoadingCategories(false);
+      }
+    })();
   }, []);
 
-  // 🔽 Esconde card ao rolar (mobile)
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (categoryId) params.append("categoryId", categoryId);
+
+    fetch(`/api/products/public?${params.toString()}`)
+      .then((res) => res.json())
+      .then((data: Product[]) => setProducts(data))
+      .catch((error) => {
+        console.error("Failed to load products:", error);
+      });
+  }, [categoryId]);
+
   useEffect(() => {
     let lastY = window.scrollY;
 
@@ -159,9 +185,24 @@ export default function Home() {
       {/* PRODUTOS */}
       <section className="max-w-7xl mx-auto space-y-3 sm:space-y-4 px-1 sm:px-0">
         <header className="text-center space-y-1">
-          <h2 className="text-xl font-bold">
-            Produtos disponíveis
-          </h2>
+          <div className="flex items-center justify-center gap-2">
+            <h2 className="text-xl font-bold">
+              Produtos disponíveis
+            </h2>
+            <select
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              className="border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2 py-1 rounded text-sm text-neutral-900 dark:text-neutral-100"
+              disabled={loadingCategories}
+            >
+              <option value="">{loadingCategories ? "Carregando..." : "Todas as categorias"}</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.slug}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <p className="text-neutral-500 text-sm">
             Escolha e compre rapidamente
           </p>

@@ -18,6 +18,10 @@ export function formatName(fullName: User["name"] | undefined): string {
    Text normalization
 ========================= */
 
+export function removeAccents(input: string): string {
+  return input.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
 /**
  * Remove acentos, normaliza leetspeak e repetições.
  */

@@ -109,27 +109,9 @@ export async function POST(req: Request) {
   }
 
   // ===== CPF =====
-  if (isLogged) {
-    const user = await prisma.user.findUnique({
-      where: { id: userId! },
-      select: {
-        profile: {
-          select: {
-            cpf: true,
-          },
-        },
-      },
-    });
-
-    const cpf = user?.profile?.cpf;
-
-    if (!cpf || !validateCpf(cpf)) {
-      return NextResponse.json(
-        { error: "CPF inválido ou não cadastrado" },
-        { status: 400 }
-      );
-    }
-  } else {
+  // Para usuários logados, o CPF é opcional (já são identificados pelo email)
+  // Para visitantes, o CPF é obrigatório
+  if (!isLogged) {
     if (!guest) {
       return NextResponse.json(
         { error: "Dados de visitante obrigatórios" },
@@ -262,7 +244,11 @@ export async function POST(req: Request) {
       })),
       external_reference: order.id,
       notification_url: webhookUrl,
-      payer: guest
+      payer: isLogged
+        ? {
+            email: session?.user?.email,
+          }
+        : guest
         ? {
             name: guest.name,
             email: guest.email,

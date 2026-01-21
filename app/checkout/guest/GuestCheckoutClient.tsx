@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 type CheckoutResponse = {
   redirectUrl: string;
@@ -58,13 +59,20 @@ export default function GuestCheckoutClient() {
         throw new Error(data.error ?? "Erro ao iniciar pagamento");
       }
 
+      toast.success("Redirecionando para pagamento...", {
+        description: "Você será redirecionado para o MercadoPago.",
+      });
+
       window.location.href = data.redirectUrl;
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Erro inesperado ao iniciar o pagamento."
-      );
+      const errorMessage = err instanceof Error
+        ? err.message
+        : "Erro inesperado ao iniciar o pagamento.";
+
+      setError(errorMessage);
+      toast.error("Erro no checkout", {
+        description: errorMessage,
+      });
       setLoading(false);
     }
   }

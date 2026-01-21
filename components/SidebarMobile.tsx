@@ -1,7 +1,7 @@
 // src/components/SidebarMobile.tsx
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { X, Boxes, Grid3X3, Phone, LogIn, ShoppingCart, Calendar, UserPlus } from "lucide-react";
@@ -17,12 +17,37 @@ type SidebarMobileProps = {
   user?: Session["user"];
 };
 
+type Category = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
 export default function SidebarMobile({ user }: SidebarMobileProps) {
   const pathname = usePathname();
   const { isOpen, closeSidebar } = useSidebar();
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
 
   const isAdmin = user?.role === "ADMIN";
+  const isStaff = user?.role === "STAFF";
   const isCustomer = user?.role === "CUSTOMER";
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoadingCategories(true);
+        const res = await fetch("/api/categories");
+        const data = await res.json();
+        setCategories(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error("Failed to load categories:", e);
+      } finally {
+        setLoadingCategories(false);
+      }
+    })();
+  }, []);
+
 
   const items = useMemo(() => {
     if (!user) {
@@ -49,7 +74,7 @@ export default function SidebarMobile({ user }: SidebarMobileProps) {
           icon: Grid3X3,
         },
         {
-          label: "Meus Agendamentos",
+          label: "Agendamento",
           href: "/schedules",
           icon: Calendar,
         },
@@ -68,24 +93,15 @@ export default function SidebarMobile({ user }: SidebarMobileProps) {
       return true;
     });
 
-    // Adicionar link de agendamentos conforme a role
-    if (isAdmin) {
-      // Admin vê todos os agendamentos
+    // Adicionar link de agendamentos conforme a role (apenas para staff, já que admin e customer já têm no SidebarNav)
+    if (isStaff) {
       navItems.push({
-        label: "Todos Agendamentos",
-        href: "/dashboard/schedules",
+        label: "Minha Agenda",
+        href: "/dashboard/staff/schedules",
         icon: Calendar,
-        adminOnly: true,
-      });
-    } else if (isCustomer) {
-      // Customer vê apenas seus agendamentos
-      navItems.push({
-        label: "Meus Agendamentos",
-        href: "/schedules",
-        icon: Calendar,
-        customerOnly: true,
       });
     }
+    
 
     return navItems;
   }, [user, isAdmin, isCustomer]);
@@ -151,6 +167,30 @@ export default function SidebarMobile({ user }: SidebarMobileProps) {
                   );
                 })}
               </nav>
+
+              {/* Categories */}
+              <div className="pt-4 mt-4 border-t border-neutral-200 dark:border-neutral-800 space-y-1 text-sm">
+                <p className="font-semibold">Categorias</p>
+                {loadingCategories ? (
+                  <div className="text-neutral-500 text-xs">Carregando categorias...</div>
+                ) : (
+                  categories.map((category) => (
+                    <Link
+                      key={category.id}
+                      href={`/categories/${category.slug}`}
+                      onClick={closeSidebar}
+                      className={[
+                        "flex items-center gap-3 px-3 py-2 rounded-lg transition",
+                        pathname === `/categories/${category.slug}`
+                          ? "bg-neutral-100 dark:bg-neutral-800 font-medium"
+                          : "hover:bg-neutral-100 dark:hover:bg-neutral-800",
+                      ].join(" ")}
+                    >
+                      <span>{category.name}</span>
+                    </Link>
+                  ))
+                )}
+              </div>
 
               <footer className="pt-4 mt-4 border-t border-neutral-200 dark:border-neutral-800 space-y-2">
                 <Link

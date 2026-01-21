@@ -121,7 +121,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Assinatura inválida" }, { status: 401 });
       }
     } else {
-      console.warn("MP_WEBHOOK_SECRET não configurado; webhook MercadoPago sem validação de assinatura");
+      return NextResponse.json({ error: "MP_WEBHOOK_SECRET ausente" }, { status: 500 });
     }
 
     let payload: unknown = null;

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { auth } from "@/auth";
+import { removeAccents } from "@/lib/utils/utils";
 
 /**
  * Admin guard
@@ -61,6 +62,8 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const id = url.searchParams.get("id");
   const q = url.searchParams.get("q");
+  const normalizedQ = q ? removeAccents(q) : null;
+  const categoryId = url.searchParams.get("categoryId");
 
   if (id) {
     const product = await prisma.product.findFirst({
@@ -85,11 +88,12 @@ export async function GET(request: Request) {
   const products = await prisma.product.findMany({
     where: {
       deletedAt: null,
-      ...(q
+      ...(categoryId ? { categoryId } : {}),
+      ...(normalizedQ
         ? {
             OR: [
-              { name: { contains: q, mode: "insensitive" } },
-              { description: { contains: q, mode: "insensitive" } },
+              { name: { contains: normalizedQ, mode: "insensitive" } },
+              { description: { contains: normalizedQ, mode: "insensitive" } },
             ],
           }
         : {}),

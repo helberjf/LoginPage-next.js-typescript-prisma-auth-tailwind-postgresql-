@@ -1,8 +1,10 @@
-//app/api/products/public/route.ts
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const categoryId = searchParams.get("categoryId");
+
   const products = await prisma.product.findMany({
     where: {
       active: true,
@@ -10,6 +12,7 @@ export async function GET() {
         gt: 0,
       },
       deletedAt: null,
+      ...(categoryId && { categoryId }),
     },
     orderBy: {
       createdAt: "desc",

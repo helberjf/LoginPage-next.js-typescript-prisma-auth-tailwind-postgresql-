@@ -3,13 +3,43 @@
 
 import ProductForm from "@/components/admin/ProductForm";
 
+type Product = {
+  id: string;
+  name: string;
+  description: string;
+  priceCents: number;
+  stock: number;
+  active: boolean;
+
+  salesCount?: number | null;
+  ratingAverage?: number | null;
+  ratingCount?: number | null;
+
+  discountPercent?: number | null;
+  hasFreeShipping: boolean;
+  couponCode?: string | null;
+
+  images?: {
+    url: string;
+    position: number;
+  }[];
+};
+
 type Props = {
   open: boolean;
   onClose: () => void;
   onCreated: () => void;
+  onUpdated: () => void;
+  product: Product | null;
 };
 
-export default function ProductModal({ open, onClose, onCreated }: Props) {
+export default function ProductModal({
+  open,
+  onClose,
+  onCreated,
+  onUpdated,
+  product,
+}: Props) {
   if (!open) return null;
 
   return (
@@ -23,13 +53,18 @@ export default function ProductModal({ open, onClose, onCreated }: Props) {
         </button>
 
         <h2 className="text-lg font-semibold mb-4">
-          Novo produto
+          {product ? "Editar produto" : "Novo produto"}
         </h2>
 
         <ProductForm
+          productId={product?.id}
           onSuccess={() => {
             onClose();
-            onCreated();
+            if (product) {
+              onUpdated();
+            } else {
+              onCreated();
+            }
           }}
         />
       </div>

@@ -3,7 +3,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import ProductModal from "@/components/admin/ProductModal";
+import { removeAccents } from "@/lib/utils/utils";
+
+type Category = {
+  id: string;
+  name: string;
+};
 
 type Product = {
   id: string;
@@ -32,13 +39,20 @@ export default function ProductList() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
-  const [openModal, setOpenModal] = useState(false);
+  const [creationModalOpen, setCreationModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [categoryId, setCategoryId] = useState("");
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+
 
   const load = async (q = "") => {
     try {
-      const url = q
-        ? `/api/admin/products?q=${encodeURIComponent(q)}`
-        : "/api/admin/products";
+      const params = new URLSearchParams();
+      if (q) params.append("q", q);
+      if (categoryId) params.append("categoryId", categoryId);
+
+      const url = `/api/admin/products${params.toString() ? `?${params.toString()}` : ""}`;
 
       const res = await fetch(url, { credentials: "include" });
       const data = await res.json();
@@ -54,6 +68,21 @@ export default function ProductList() {
 
   useEffect(() => {
     load();
+  }, [search, categoryId]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoadingCategories(true);
+        const res = await fetch("/api/categories", { credentials: "include" });
+        const data = await res.json();
+        setCategories(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error("Failed to load categories:", e);
+      } finally {
+        setLoadingCategories(false);
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -63,7 +92,7 @@ export default function ProductList() {
     }
 
     setIsSearching(true);
-    const t = setTimeout(() => load(search.trim()), 300);
+    const t = setTimeout(() => load(removeAccents(search.trim())), 300);
     return () => clearTimeout(t);
   }, [search]);
 
@@ -82,8 +111,25 @@ export default function ProductList() {
           className="border px-3 py-2 rounded w-full md:max-w-sm"
         />
 
+        <select
+          value={categoryId}
+          onChange={e => setCategoryId(e.target.value)}
+          className="border px-3 py-2 rounded w-full md:max-w-sm text-neutral-900 dark:text-neutral-100"
+          disabled={loadingCategories}
+        >
+          <option value="">{loadingCategories ? "Carregando categorias..." : "Todas as categorias"}</option>
+          {categories.map(cat => (
+            <option key={cat.id} value={cat.id}>
+              {cat.name}
+            </option>
+          ))}
+        </select>
+
         <button
-          onClick={() => setOpenModal(true)}
+          onClick={() => {
+            setCreationModalOpen(true);
+            setEditingProduct(null);
+          }}
           className="px-4 py-2 bg-indigo-600 text-white rounded"
         >
           Novo produto
@@ -124,11 +170,14 @@ export default function ProductList() {
                 className="border rounded-lg bg-white dark:bg-neutral-900 overflow-hidden"
               >
                 {/* IMAGE */}
-                <div className="aspect-square bg-neutral-100">
+                <div className="relative w-full aspect-square overflow-hidden bg-neutral-100">
                   {mainImage ? (
-                    <img
+                    <Image
                       src={mainImage}
                       alt={p.name}
+                      fill={true}
+                      sizes="(min-width: 768px) 25vw, 50vw"
+                      loading="lazy"
                       className="w-full h-full object-contain"
                     />
                   ) : (
@@ -171,12 +220,15 @@ export default function ProductList() {
 
                   {/* ACTIONS */}
                   <div className="flex gap-2 pt-2">
-                    <Link
-                      href={`/dashboard/admin/products/${p.id}`}
+                    <button
+                      onClick={() => {
+                        setEditingProduct(p);
+                        setCreationModalOpen(true);
+                      }}
                       className="flex-1 px-2 py-1 bg-indigo-600 text-white text-xs rounded text-center hover:bg-indigo-700 transition"
                     >
                       Editar
-                    </Link>
+                    </button>
                     <button
                       onClick={async () => {
                         if (!confirm("Tem certeza que deseja deletar este produto?")) return;
@@ -206,9 +258,14 @@ export default function ProductList() {
 
       {/* MODAL */}
       <ProductModal
-        open={openModal}
-        onClose={() => setOpenModal(false)}
+        open={creationModalOpen || !!editingProduct}
+        onClose={() => {
+          setCreationModalOpen(false);
+          setEditingProduct(null);
+        }}
+        product={editingProduct}
         onCreated={() => load(search.trim())}
+        onUpdated={() => load(search.trim())}
       />
     </div>
   );
