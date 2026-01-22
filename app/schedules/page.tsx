@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import SchedulingFlow from "@/components/SchedulingFlow";
 
 export const metadata: Metadata = {
@@ -10,7 +11,9 @@ export default function SchedulesPage() {
   return (
     <main className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
       <div className="mx-auto max-w-4xl px-4 py-8">
-        <SchedulingFlow />
+        <Suspense fallback={<div className="min-h-[60vh]" />}> 
+          <SchedulingFlow />
+        </Suspense>
       </div>
     </main>
   );
