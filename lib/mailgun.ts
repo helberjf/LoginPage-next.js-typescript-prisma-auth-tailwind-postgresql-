@@ -17,6 +17,15 @@ export async function sendEmail({ to, subject, html }: SendEmailArgs) {
     throw new Error("MAILGUN_DOMAIN not set");
   }
 
+  const fromName = process.env.MAILGUN_FROM_NAME?.trim();
+  const fromEmail = process.env.MAILGUN_FROM_EMAIL?.trim();
+  const fromEnv = process.env.MAILGUN_FROM?.trim();
+  const fromAddress = fromEnv
+    ? fromEnv
+    : fromName && fromEmail
+      ? `${fromName} <${fromEmail}>`
+      : `Mailgun Sandbox <postmaster@${process.env.MAILGUN_DOMAIN}>`;
+
   const mailgun = new Mailgun(FormData);
   const mg = mailgun.client({
     username: "api",
@@ -25,8 +34,8 @@ export async function sendEmail({ to, subject, html }: SendEmailArgs) {
   });
 
   return mg.messages.create(process.env.MAILGUN_DOMAIN, {
-    from: `Mailgun Sandbox <postmaster@${process.env.MAILGUN_DOMAIN}>`,
-    to: [`${to}`],
+    from: fromAddress,
+    to: [to.trim()],
     subject: subject || "Redefinição de senha",
     text: "Você solicitou a redefinição de senha.",
     html,

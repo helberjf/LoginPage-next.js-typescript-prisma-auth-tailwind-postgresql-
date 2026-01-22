@@ -8,8 +8,8 @@ DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=SCHEMA
 AUTH_SECRET="uma_chave_aleatoria_com_32+_caracteres"
 
 # GOOGLE LOGIN
-GOOGLE_CLIENT_ID=""
-GOOGLE_CLIENT_SECRET=""
+## GOOGLE_CLIENT_ID=""
+## GOOGLE_CLIENT_SECRET=""
 
 # SMTP
 SMTP_HOST=smtp.mailtrap.io

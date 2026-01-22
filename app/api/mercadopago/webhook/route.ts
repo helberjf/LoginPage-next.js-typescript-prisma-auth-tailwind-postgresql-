@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
+import type { Prisma } from "@prisma/client";
 
 type SignatureParts = {
   ts: string;
@@ -166,7 +167,7 @@ export async function POST(req: Request) {
     const event = await prisma.webhookEvent.create({
       data: {
         providerId,
-        payload: (payload ?? {}) as Record<string, unknown>,
+        payload: (payload ?? {}) as Prisma.JsonValue,
       },
       select: { id: true },
     });
