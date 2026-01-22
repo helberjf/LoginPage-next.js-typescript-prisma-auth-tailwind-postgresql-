@@ -33,15 +33,30 @@ type ProductCardProps = {
   product: Product;
 };
 
+const PLACEHOLDER_IMAGE = "/images/placeholder/iphone17ProMax.webp";
+
+function normalizeImageUrl(url?: string | null) {
+  if (!url) return PLACEHOLDER_IMAGE;
+  const trimmed = url.trim();
+  if (!trimmed) return PLACEHOLDER_IMAGE;
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("/")) {
+    return trimmed;
+  }
+  return `https://${trimmed}`;
+}
+
 export default function ProductCard({ product }: ProductCardProps) {
   const { addItem } = useCart();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const images = product.images && product.images.length > 0 
-    ? product.images.sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-    : [{ url: "/placeholder.png", position: 0 }];
+    ? product.images
+        .slice()
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+        .map((img) => ({ ...img, url: normalizeImageUrl(img.url) }))
+    : [{ url: PLACEHOLDER_IMAGE, position: 0 }];
 
-  const currentImage = images[currentImageIndex]?.url ?? "/placeholder.png";
+  const currentImage = images[currentImageIndex]?.url ?? PLACEHOLDER_IMAGE;
   const hasMultipleImages = images.length > 1;
 
   const basePrice = product.priceCents;
@@ -98,6 +113,9 @@ export default function ProductCard({ product }: ProductCardProps) {
           alt={product.name}
           className="w-full h-full object-contain"
           loading="lazy"
+          onError={(e) => {
+            e.currentTarget.src = PLACEHOLDER_IMAGE;
+          }}
         />
         
         {/* Navegação de imagens */}

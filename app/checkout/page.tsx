@@ -62,7 +62,7 @@ export default function CheckoutPage() {
                   className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg p-4 flex gap-4"
                 >
                   <img
-                    src={item.image ?? "/placeholder.png"}
+                    src={item.image ?? "/images/placeholder/iphone17ProMax.webp"}
                     alt={item.name}
                     className="w-20 h-20 object-contain bg-neutral-100 dark:bg-neutral-800 rounded"
                   />

@@ -53,7 +53,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       ? Math.round(product.priceCents * (1 - product.discountPercent / 100))
       : product.priceCents;
 
-  const imageUrl = product.images?.[0]?.url || "/placeholder.png";
+  const imageUrl = product.images?.[0]?.url || "/images/placeholder/iphone17ProMax.webp";
 
   return {
     title: `${product.name} - R$ ${(finalPrice / 100).toFixed(2)}`,
@@ -113,7 +113,7 @@ export default async function ProductPage({ params }: PageProps) {
     "@type": isServiceSchedule ? "Service" : "Product",
     "name": product.name,
     "description": product.description || "",
-    "image": product.images?.[0]?.url || "/placeholder.png",
+    "image": product.images?.[0]?.url || "/images/placeholder/iphone17ProMax.webp",
     "offers": {
       "@type": "Offer",
       "price": (finalPrice / 100).toFixed(2),

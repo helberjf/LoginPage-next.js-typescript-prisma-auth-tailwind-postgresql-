@@ -8,10 +8,24 @@ type ImageGalleryProps = {
   productName: string;
 };
 
+const PLACEHOLDER_IMAGE = "/images/placeholder/iphone17ProMax.webp";
+
+function normalizeImageUrl(url?: string | null) {
+  if (!url) return PLACEHOLDER_IMAGE;
+  const trimmed = url.trim();
+  if (!trimmed) return PLACEHOLDER_IMAGE;
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("/")) {
+    return trimmed;
+  }
+  return `https://${trimmed}`;
+}
+
 export default function ImageGallery({ images, productName }: ImageGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const imageList = images.length > 0 ? images : [{ url: "/placeholder.png", position: 0 }];
+  const imageList = images.length > 0
+    ? images.map((img) => ({ ...img, url: normalizeImageUrl(img.url) }))
+    : [{ url: PLACEHOLDER_IMAGE, position: 0 }];
 
   const goToPrevious = () => {
     setCurrentIndex((prev) => (prev === 0 ? imageList.length - 1 : prev - 1));
@@ -34,6 +48,9 @@ export default function ImageGallery({ images, productName }: ImageGalleryProps)
             alt={productName}
             className="w-full h-full object-contain"
             loading="lazy"
+            onError={(e) => {
+              e.currentTarget.src = PLACEHOLDER_IMAGE;
+            }}
           />
 
           {/* Setas de Navegação */}
@@ -89,6 +106,9 @@ export default function ImageGallery({ images, productName }: ImageGalleryProps)
                 alt={`Miniatura ${idx + 1}`}
                 className="w-full h-full object-contain"
                 loading="lazy"
+                onError={(e) => {
+                  e.currentTarget.src = PLACEHOLDER_IMAGE;
+                }}
               />
             </button>
           ))}

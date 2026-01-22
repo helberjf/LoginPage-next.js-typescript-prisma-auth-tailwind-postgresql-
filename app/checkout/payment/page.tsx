@@ -468,7 +468,7 @@ export default function CheckoutPaymentPage() {
                     <div key={item.id} className="flex gap-3 text-sm">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={item.image ?? "/placeholder.png"}
+                        src={item.image ?? "/images/placeholder/iphone17ProMax.webp"}
                         alt={item.name}
                         className="w-12 h-12 object-contain bg-white dark:bg-neutral-800 rounded border border-neutral-200 dark:border-neutral-700"
                       />

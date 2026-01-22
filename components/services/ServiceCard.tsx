@@ -35,9 +35,9 @@ export default function ServiceCard({ service }: ServiceCardProps) {
 
   const images = service.images && service.images.length > 0 
     ? service.images.sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-    : [{ url: "/placeholder.png", position: 0 }];
+    : [{ url: "/images/placeholder/iphone17ProMax.webp", position: 0 }];
 
-  const currentImage = images[currentImageIndex]?.url ?? "/placeholder.png";
+  const currentImage = images[currentImageIndex]?.url ?? "/images/placeholder/iphone17ProMax.webp";
   const hasMultipleImages = images.length > 1;
 
   const price = service.priceCents ?? 0;

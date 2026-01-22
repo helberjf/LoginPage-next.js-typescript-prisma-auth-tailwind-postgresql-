@@ -250,6 +250,11 @@ export async function POST(req: Request) {
       select: { id: true },
     });
 
+    const mpPaymentJson: Prisma.InputJsonValue =
+      mpPayment && typeof mpPayment === "object"
+        ? (mpPayment as Prisma.InputJsonValue)
+        : {};
+
     if (existingPayment) {
       await prisma.payment.update({
         where: { id: existingPayment.id },
@@ -257,7 +262,7 @@ export async function POST(req: Request) {
           status: paymentStatus,
           method: mapPaymentMethod(mpPayment.payment_type_id),
           amountCents,
-          rawPayload: mpPayment as Record<string, unknown>,
+          rawPayload: mpPaymentJson,
         },
       });
       console.log(`Pagamento atualizado: ${existingPayment.id}`);
@@ -269,7 +274,7 @@ export async function POST(req: Request) {
           status: paymentStatus,
           mpPaymentId: providerId,
           amountCents,
-          rawPayload: mpPayment as Record<string, unknown>,
+          rawPayload: mpPaymentJson,
         },
       });
       console.log(`Novo pagamento criado para ordem: ${orderId}`);
