@@ -35,22 +35,7 @@ function onlyDigits(v: string) {
   return v.replace(/\D/g, "");
 }
 
-function isValidCPF(cpf: string) {
-  const n = onlyDigits(cpf);
-  if (n.length !== 11 || /^(\d)\1+$/.test(n)) return false;
-  let s = 0;
-  for (let i = 0; i < 9; i++) s += parseInt(n[i]) * (10 - i);
-  let d1 = (s * 10) % 11;
-  if (d1 === 10) d1 = 0;
-  if (d1 !== parseInt(n[9])) return false;
-  s = 0;
-  for (let i = 0; i < 10; i++) s += parseInt(n[i]) * (11 - i);
-  let d2 = (s * 10) % 11;
-  if (d2 === 10) d2 = 0;
-  return d2 === parseInt(n[10]);
-}
-
-function toE164(country: PhoneCountry, digits: string) {
+function toE164(country: PhoneCountry, digits: string): string {
   if (digits.length < 7) {
     throw new Error("Telefone deve ter no mínimo 7 dígitos.");
   }
@@ -145,7 +130,14 @@ export default function RegisterForm() {
     if (!formValid) return;
 
     const phoneDigits = onlyDigits(form.phone);
-    const phoneE164 = toE164(form.phoneCountry, phoneDigits);
+    let phoneE164: string;
+    
+    try {
+      phoneE164 = toE164(form.phoneCountry, phoneDigits);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro no telefone");
+      return;
+    }
 
     setLoading(true);
     try {

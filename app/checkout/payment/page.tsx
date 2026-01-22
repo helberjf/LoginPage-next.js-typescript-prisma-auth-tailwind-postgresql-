@@ -1,7 +1,7 @@
 // app/checkout/payment/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -45,7 +45,7 @@ function hasSurname(name: string) {
   return parts.length >= 2 && parts.every((p) => p.length >= 2);
 }
 
-export default function CheckoutPaymentPage() {
+function CheckoutPaymentContent() {
   const { data: session } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -515,5 +515,13 @@ export default function CheckoutPaymentPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function CheckoutPaymentPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-neutral-50 dark:bg-neutral-950" />}> 
+      <CheckoutPaymentContent />
+    </Suspense>
   );
 }
