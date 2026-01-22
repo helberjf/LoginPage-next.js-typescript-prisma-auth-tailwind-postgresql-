@@ -146,15 +146,10 @@ c:\Users\default.LAPTOP-K8F2QHAF\projects\loginPage-nextauth-nextjs-prisma\
 │   ├── auth.d.ts
 │   └── next-auth.d.ts
 ├── AGENTS.md                        # Documentação agentes
-├── check-google-oauth.js            # Script verificação OAuth
-├── create-test-user.js              # Script criar usuário teste
-├── create-user.js                   # Script criar usuário
-├── debug-env.js                     # Script debug ambiente
 ├── docker-compose.yml               # Docker Compose
 ├── env.md                           # Documentação variáveis ambiente
 ├── eslint.config.mjs                # Config ESLint
 ├── LICENSE                          # Licença
-├── MP_PRODUCT_FIELDS.md             # Campos MercadoPago
 ├── next.config.ts                   # Config Next.js
 ├── next-env.d.ts                    # Tipos Next.js
 ├── package.json                     # Dependências
