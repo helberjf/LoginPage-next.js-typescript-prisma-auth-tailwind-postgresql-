@@ -10,17 +10,19 @@ export default function SearchBar() {
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
+      const params = new URLSearchParams(searchParams?.toString());
       if (query.trim()) {
-        const params = new URLSearchParams();
         params.set("q", query.trim());
-        router.push(`/products?${params.toString()}`);
       } else {
-        router.push("/products");
+        params.delete("q");
       }
+
+      const qs = params.toString();
+      router.push(qs ? `/products?${qs}` : "/products");
     }, 300);
 
     return () => clearTimeout(debounceTimer);
-  }, [query, router]);
+  }, [query, router, searchParams]);
 
   return (
     <div className="relative max-w-md">

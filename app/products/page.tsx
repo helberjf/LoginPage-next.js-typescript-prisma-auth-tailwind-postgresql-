@@ -1,142 +1,151 @@
+// app/products/page.tsx
 import prisma from "@/lib/prisma";
 import Link from "next/link";
 import { auth } from "@/auth";
 import ProductCard from "@/components/products/ProductCard";
+import ProductCategoryFilter from "@/components/products/ProductCategoryFilter";
+import ProductPriceFilter from "@/components/products/ProductPriceFilter";
 import SearchBar from "@/components/SearchBar";
 import { Suspense } from "react";
-import type { Metadata } from "next";
+import { Calendar } from "lucide-react";
 
-type SearchParams = Promise<{ q?: string; categoryId?: string }> | { q?: string; categoryId?: string };
+async function ProductsContent({
+  searchQuery,
+  categorySlug,
+  maxPrice,
+}: {
+  searchQuery?: string;
+  categorySlug?: string;
+  maxPrice?: number;
+}) {
+  const categories = await prisma.category.findMany({
+    where: { active: true, deletedAt: null },
+    select: { id: true, name: true, slug: true },
+    orderBy: { name: "asc" },
+  });
 
-type PageProps = {
-  searchParams: SearchParams;
-};
-
-export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
-  const params = await Promise.resolve(searchParams);
-  const query = params?.q;
-  
-  return {
-    title: query ? `${query} - Produtos` : "Produtos - Sistema de E-commerce",
-    description: query 
-      ? `Encontre ${query} e outros produtos com os melhores preços e frete grátis`
-      : "Navegue por nosso catálogo completo de produtos com os melhores preços, frete grátis e entregas rápidas",
-    openGraph: {
-      title: query ? `${query} - Produtos` : "Produtos",
-      description: "Encontre os melhores produtos com preços especiais",
+  const priceAggregate = await prisma.product.aggregate({
+    where: {
+      active: true,
+      stock: { gt: 0 },
+      deletedAt: null,
     },
-  };
-}
+    _max: { priceCents: true },
+  });
 
-type Category = {
-  id: string;
-  name: string;
-  slug: string;
-};
+  const maxProductPrice = Math.max(
+    1,
+    Math.ceil((priceAggregate._max.priceCents ?? 10000 * 100) / 100)
+  );
 
-async function getCategories(): Promise<Category[]> {
-  try {
-    const categories = await prisma.category.findMany({
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-      },
-      orderBy: {
-        name: "asc",
-      },
-    });
-    return categories;
-  } catch (error) {
-    console.error("Failed to fetch categories:", error);
-    return [];
-  }
-}
-
-function ProductsHeader() {
   return (
-    <header className="space-y-3 sm:space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-neutral-900 dark:text-neutral-100">
-            Produtos
-          </h1>
-          <p className="text-sm sm:text-base text-neutral-500 dark:text-neutral-400 mt-1">
-            Veja, compare e escolha o melhor produto para você
-          </p>
-        </div>
-        
-        <div className="w-full sm:w-auto sm:min-w-[280px]">
-          <SearchBar />
-        </div>
-      </div>
+    <main className="min-h-screen bg-neutral-50 dark:bg-neutral-950 p-6">
+      <div className="max-w-7xl mx-auto space-y-10">
+        {/* Header */}
+        <header className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-4xl font-bold">Produtos</h1>
+              <p className="text-neutral-500">
+                Veja, compare e escolha o melhor produto para você
+              </p>
+            </div>
 
-      <Suspense fallback={null}>
-        <SearchActions />
-      </Suspense>
-    </header>
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+              <div className="flex items-center gap-2">
+                <SearchBar />
+                <ProductPriceFilter maxPrice={maxProductPrice} />
+              </div>
+              <ProductCategoryFilter categories={categories} />
+            </div>
+          </div>
+
+          {/* Ações globais */}
+          <Suspense fallback={<div>Carregando...</div>}>
+            <GlobalActions />
+          </Suspense>
+        </header>
+
+        {/* Produtos */}
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-3 pb-8">
+          <Suspense fallback={<div>Carregando produtos...</div>}>
+            <ProductGrid
+              searchQuery={searchQuery}
+              categorySlug={categorySlug}
+              maxPrice={maxPrice}
+            />
+          </Suspense>
+        </section>
+      </div>
+    </main>
   );
 }
 
-async function SearchActions() {
+async function GlobalActions() {
   const session = await auth();
   const isLogged = !!session?.user;
 
-  if (isLogged) return null;
-
   return (
-    <nav className="flex flex-wrap gap-2 sm:gap-3" aria-label="Ações de usuário">
+    <div className="flex flex-wrap gap-3">
       <Link
-        href="/login"
-        className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 text-xs sm:text-sm font-medium transition"
+        href="/schedules"
+        className="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 text-sm flex items-center gap-2 transition"
       >
-        Entrar
+        <Calendar className="h-4 w-4" />
+        Agendar Serviços
       </Link>
 
-      <Link
-        href="/register"
-        className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-md border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-xs sm:text-sm font-medium transition"
-      >
-        Criar conta
-      </Link>
+      {isLogged ? null : (
+        <>
+          <Link
+            href="/login"
+            className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 text-sm"
+          >
+            Entrar
+          </Link>
+
+          <Link
+            href="/register"
+            className="px-4 py-2 rounded-md border hover:bg-neutral-100 dark:hover:bg-neutral-800 text-sm"
+          >
+            Criar conta
+          </Link>
+        </>
+      )}
 
       <Link
         href="/"
-        className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-md text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
+        className="px-4 py-2 rounded-md text-sm text-neutral-600 hover:underline"
       >
-        ← Voltar para Home
+        Voltar para Home
       </Link>
-    </nav>
+    </div>
   );
 }
 
-type ProductGridProps = {
+async function ProductGrid({
+  searchQuery,
+  categorySlug,
+  maxPrice,
+}: {
   searchQuery?: string;
-  categoryId?: string;
-};
+  categorySlug?: string;
+  maxPrice?: number;
+}) {
+  const session = await auth();
+  const isLogged = !!session?.user;
 
-async function ProductGrid({ searchQuery, categoryId }: ProductGridProps) {
-  const whereClause: {
-    active: boolean;
-    stock: { gt: number };
-    deletedAt: null;
-    categoryId?: string;
-    OR?: Array<{ name: { contains: string; mode: 'insensitive' } }>;
-  } = {
+  // Construir where clause baseado na busca
+  const whereClause: any = {
     active: true,
-    stock: { gt: 0 },
+    stock: {
+      gt: 0,
+    },
     deletedAt: null,
   };
 
-  if (categoryId) {
-    whereClause.categoryId = categoryId;
-  }
-
+  // Se houver query de busca, adicionar filtro por nome (ignorando acentos)
   if (searchQuery && searchQuery.trim()) {
-    const normalizedQuery = searchQuery
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-    
     whereClause.OR = [
       {
         name: {
@@ -146,11 +155,23 @@ async function ProductGrid({ searchQuery, categoryId }: ProductGridProps) {
       },
       {
         name: {
-          contains: normalizedQuery,
+          contains: searchQuery
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, ""), // Remove acentos
           mode: "insensitive",
         },
       },
     ];
+  }
+
+  if (categorySlug) {
+    whereClause.category = { slug: categorySlug };
+  }
+
+  if (typeof maxPrice === "number" && Number.isFinite(maxPrice)) {
+    whereClause.priceCents = {
+      lte: Math.round(maxPrice * 100),
+    };
   }
 
   const products = await prisma.product.findMany({
@@ -164,118 +185,49 @@ async function ProductGrid({ searchQuery, categoryId }: ProductGridProps) {
       priceCents: true,
       discountPercent: true,
       hasFreeShipping: true,
+      images: {
+        where: { position: 0 },
+        select: { url: true },
+      },
       salesCount: true,
       ratingAverage: true,
       ratingCount: true,
-      category: {
-        select: {
-          slug: true,
-          name: true,
-        },
-      },
-      images: {
-        orderBy: { position: "asc" },
-        select: { url: true, position: true },
-        take: 5,
-      },
     },
   });
 
   if (products.length === 0) {
     return (
-      <div className="col-span-full text-center py-8 sm:py-12">
-        <p className="text-sm sm:text-base text-neutral-500 dark:text-neutral-400">
+      <div className="col-span-full text-center py-12">
+        <p className="text-neutral-500">
           {searchQuery
             ? `Nenhum produto encontrado para "${searchQuery}"`
-            : "Nenhum produto disponível no momento"}
+            : "Nenhum produto encontrado"}
         </p>
       </div>
     );
   }
 
-  return (
-    <>
-      {products.map((product) => (
-        <ProductCard key={product.id} product={product} />
-      ))}
-    </>
-  );
+  return products.map((product) => (
+    <ProductCard
+      key={product.id}
+      product={product}
+    />
+  ));
 }
 
-type CategoryFilterProps = {
-  categories: Category[];
-  selectedCategoryId?: string;
-};
-
-function CategoryFilter({ categories, selectedCategoryId }: CategoryFilterProps) {
-  return (
-    <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-      <span className="text-xs sm:text-sm font-medium text-neutral-700 dark:text-neutral-300 whitespace-nowrap">
-        Categoria:
-      </span>
-      <div className="flex gap-2">
-        <Link
-          href="/products"
-          className={`px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition ${
-            !selectedCategoryId
-              ? "bg-blue-600 text-white"
-              : "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700"
-          }`}
-        >
-          Todas
-        </Link>
-        {categories.map((category) => (
-          <Link
-            key={category.id}
-            href={`/products?categoryId=${category.id}`}
-            className={`px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition ${
-              selectedCategoryId === category.id
-                ? "bg-blue-600 text-white"
-                : "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700"
-            }`}
-          >
-            {category.name}
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export default async function ProductsPage({ searchParams }: PageProps) {
-  const params = await Promise.resolve(searchParams);
-  const searchQuery = params?.q;
-  const categoryId = params?.categoryId;
-  const categories = await getCategories();
+export default async function ProductsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ q?: string; category?: string; maxPrice?: string }>;
+}) {
+  const params = await searchParams;
+  const maxPrice = params?.maxPrice ? Number(params.maxPrice) : undefined;
 
   return (
-    <main className="min-h-screen bg-neutral-50 dark:bg-neutral-950 px-3 py-4 sm:px-4 sm:py-6">
-      <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 md:space-y-10">
-        <ProductsHeader />
-
-        {categories.length > 0 && (
-          <CategoryFilter 
-            categories={categories} 
-            selectedCategoryId={categoryId}
-          />
-        )}
-
-        <section 
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 pb-8"
-          aria-label="Lista de produtos"
-        >
-          <Suspense 
-            fallback={
-              <div className="col-span-full text-center py-12">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p className="mt-2 text-sm text-neutral-500">Carregando produtos...</p>
-              </div>
-            }
-          >
-            <ProductGrid searchQuery={searchQuery} categoryId={categoryId} />
-          </Suspense>
-        </section>
-      </div>
-    </main>
+    <ProductsContent
+      searchQuery={params?.q}
+      categorySlug={params?.category}
+      maxPrice={Number.isFinite(maxPrice) ? maxPrice : undefined}
+    />
   );
 }

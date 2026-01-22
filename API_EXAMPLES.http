@@ -1,0 +1,333 @@
+// API Scheduling - Exemplos de Requisições e Respostas
+
+/**
+ * 1. GET /api/schedules/available-times
+ * 
+ * Obtém lista de horários disponíveis para um serviço em uma data específica
+ */
+
+// Requisição
+GET /api/schedules/available-times?serviceId=service-1&date=2026-02-20
+
+// Respostas
+
+// ✅ Sucesso - Horários disponíveis
+HTTP 200 OK
+{
+  "availableTimes": [
+    { "time": "09:00", "timestamp": 1740057600000 },
+    { "time": "09:30", "timestamp": 1740059400000 },
+    { "time": "10:00", "timestamp": 1740061200000 },
+    { "time": "10:30", "timestamp": 1740063000000 },
+    { "time": "14:00", "timestamp": 1740076800000 },
+    { "time": "14:30", "timestamp": 1740078600000 }
+  ],
+  "serviceName": "Consulta Médica",
+  "durationMins": 30
+}
+
+// ✅ Sucesso - Nenhum horário disponível
+HTTP 200 OK
+{
+  "availableTimes": [],
+  "message": "Sem disponibilidade para este dia",
+  "serviceName": "Consulta Médica",
+  "durationMins": 30
+}
+
+// ❌ Erro - Parâmetros inválidos
+HTTP 400 Bad Request
+{
+  "error": "serviceId e date são obrigatórios"
+}
+
+// ❌ Erro - Data inválida
+HTTP 400 Bad Request
+{
+  "error": "Data inválida"
+}
+
+// ❌ Erro - Data no passado
+HTTP 400 Bad Request
+{
+  "error": "Não é possível agendar para datas passadas"
+}
+
+// ❌ Erro - Serviço não encontrado
+HTTP 404 Not Found
+{
+  "error": "Serviço não encontrado"
+}
+
+/**
+ * 2. POST /api/schedules/create-validated
+ * 
+ * Cria um novo agendamento com REVALIDAÇÃO de disponibilidade
+ */
+
+// Requisição
+POST /api/schedules/create-validated
+Content-Type: application/json
+
+{
+  "serviceId": "service-1",
+  "date": "2026-02-20",
+  "time": "09:30",
+  "guestName": "João Silva",
+  "guestEmail": "joao@example.com",
+  "guestPhone": "(11) 99999-9999",
+  "notes": "Primeira consulta",
+  "employeeId": "user-123" // opcional
+}
+
+// Respostas
+
+// ✅ Sucesso - Agendamento criado
+HTTP 201 Created
+{
+  "success": true,
+  "schedule": {
+    "id": "clu8qh2ov0000qrh7z8z8z8z8",
+    "startAt": "2026-02-20T09:30:00.000Z",
+    "endAt": "2026-02-20T10:00:00.000Z",
+    "serviceName": "Consulta Médica",
+    "priceCents": 15000
+  }
+}
+
+// ❌ Erro - Horário não está mais disponível (race condition)
+HTTP 409 Conflict
+{
+  "error": "Horário não está mais disponível",
+  "availableAfter": "2026-02-20T10:00:00.000Z"
+}
+
+// ❌ Erro - Entrada inválida
+HTTP 400 Bad Request
+{
+  "error": "serviceId, date e time são obrigatórios"
+}
+
+// ❌ Erro - Email obrigatório
+HTTP 401 Unauthorized
+{
+  "error": "Email obrigatório"
+}
+
+// ❌ Erro - Data inválida
+HTTP 400 Bad Request
+{
+  "error": "Data inválida"
+}
+
+// ❌ Erro - Horário no passado
+HTTP 400 Bad Request
+{
+  "error": "Horário não pode estar no passado"
+}
+
+// ❌ Erro - Serviço não encontrado
+HTTP 404 Not Found
+{
+  "error": "Serviço não encontrado"
+}
+
+/**
+ * 3. POST /api/webhooks/schedules
+ * 
+ * Webhook para confirmar ou cancelar agendamento após pagamento
+ */
+
+// Requisição - CONFIRMAR após pagamento aprovado
+POST /api/webhooks/schedules
+Content-Type: application/json
+
+{
+  "scheduleId": "clu8qh2ov0000qrh7z8z8z8z8",
+  "orderId": "order-123",
+  "paymentStatus": "PAID",
+  "action": "CONFIRM"
+}
+
+// Respostas
+
+// ✅ Sucesso - Agendamento confirmado
+HTTP 200 OK
+{
+  "success": true,
+  "message": "Agendamento confirmado",
+  "schedule": {
+    "id": "clu8qh2ov0000qrh7z8z8z8z8",
+    "status": "CONFIRMED",
+    "startAt": "2026-02-20T09:30:00.000Z",
+    "serviceName": "Consulta Médica",
+    "confirmationCode": "CLU8QH2O"
+  }
+}
+
+// Requisição - CANCELAR após pagamento falhar
+POST /api/webhooks/schedules
+Content-Type: application/json
+
+{
+  "scheduleId": "clu8qh2ov0000qrh7z8z8z8z8",
+  "paymentStatus": "CANCELLED",
+  "action": "CANCEL"
+}
+
+// ✅ Sucesso - Agendamento cancelado
+HTTP 200 OK
+{
+  "success": true,
+  "message": "Agendamento cancelado",
+  "schedule": {
+    "id": "clu8qh2ov0000qrh7z8z8z8z8",
+    "status": "CANCELLED"
+  }
+}
+
+// ❌ Erro - Ação inválida
+HTTP 400 Bad Request
+{
+  "error": "action deve ser CONFIRM ou CANCEL"
+}
+
+// ❌ Erro - Agendamento não encontrado
+HTTP 404 Not Found
+{
+  "error": "Agendamento não encontrado"
+}
+
+/**
+ * 4. PUT /api/webhooks/schedules
+ * 
+ * Resincronia de estado - valida agendamento e sincroniza com Order
+ */
+
+// Requisição
+PUT /api/webhooks/schedules
+Content-Type: application/json
+
+{
+  "scheduleId": "clu8qh2ov0000qrh7z8z8z8z8"
+}
+
+// Respostas
+
+// ✅ Sucesso - Agendamento sincronizado
+HTTP 200 OK
+{
+  "success": true,
+  "message": "Agendamento sincronizado e confirmado"
+}
+
+// ✅ Sucesso - Estado já correto
+HTTP 200 OK
+{
+  "success": true,
+  "message": "Agendamento já está em estado correto",
+  "schedule": {
+    "id": "clu8qh2ov0000qrh7z8z8z8z8",
+    "status": "CONFIRMED",
+    "paymentStatus": "PAID"
+  }
+}
+
+// ❌ Erro - Schedule não encontrado
+HTTP 404 Not Found
+{
+  "error": "Agendamento não encontrado"
+}
+
+/**
+ * 📊 Exemplo de Flow Completo
+ * 
+ * Timeline de um agendamento desde início até confirmação
+ */
+
+/*
+T0: Usuário seleciona "Consulta Médica"
+    serviceId = "service-1"
+
+T1: Usuário seleciona data "2026-02-20"
+    GET /api/schedules/available-times?serviceId=service-1&date=2026-02-20
+    Response: [ "09:00", "09:30", "10:00", ... ]
+
+T2: Usuário seleciona hora "09:30"
+    Preenche dados pessoais
+
+T3: Usuário clica "Confirmar"
+    POST /api/schedules/create-validated
+    Body: {
+      serviceId: "service-1",
+      date: "2026-02-20",
+      time: "09:30",
+      guestName: "João",
+      guestEmail: "joao@email.com",
+      guestPhone: "(11)99999-9999"
+    }
+    
+    Backend:
+    ├─ Revalida: "Ninguém criou agendamento em 09:30?" ✓
+    ├─ Cria: Schedule { status: PENDING, paymentStatus: PENDING }
+    └─ Response: { schedule: { id: "clu8qh2ov..." } }
+
+T4: Frontend redireciona para checkout
+    router.push("/checkout/payment?scheduleId=clu8qh2ov...")
+
+T5: Usuário completa pagamento no MercadoPago
+
+T6: MercadoPago envia webhook confirmando pagamento
+    MP -> API/checkout -> detecta PAID
+    Chama: POST /api/webhooks/schedules
+    {
+      scheduleId: "clu8qh2ov...",
+      paymentStatus: "PAID",
+      action: "CONFIRM"
+    }
+    
+    Backend:
+    ├─ Encontra Schedule
+    ├─ Atualiza: status = CONFIRMED, paymentStatus = PAID
+    ├─ Envia email confirmação (TODO)
+    ├─ Notifica funcionário (TODO)
+    └─ Response: { success: true }
+
+T7: ✅ Agendamento CONFIRMADO e PAGO!
+    Usuário recebe email com detalhes
+    Funcionário recebe notificação
+*/
+
+/**
+ * 🔐 Casos de Erro e Edge Cases
+ */
+
+// Edge Case 1: Race Condition - Dois usuários tentam marcar mesmo horário
+// T1: Usuário A solicita horários para 2026-02-20
+// T2: Usuário B solicita horários para 2026-02-20
+// T3: Usuário A cria agendamento em 09:30 ✓
+// T4: Usuário B tenta criar agendamento em 09:30
+// → Response: 409 Conflict "Horário não está mais disponível"
+// → B precisa escolher outro horário
+
+// Edge Case 2: Pagamento falha/é cancelado
+// Backend recebe: { action: "CANCEL", paymentStatus: "FAILED" }
+// → Schedule.status = CANCELLED
+// → Horário volta a ficar disponível
+// → Email de cancelamento enviado
+
+// Edge Case 3: Webhook duplicado
+// MercadoPago pode enviar webhook 2x (idempotência)
+// → PUT /webhooks/schedules detecta estado correto
+// → Retorna sucesso (não cria agendamento duplicado)
+
+// Edge Case 4: Serviço desativado
+// Service.active = false
+// → GET available-times retorna 404
+// → POST create-validated retorna 404
+// → Usuário não consegue agendar
+
+// Edge Case 5: Data muito longe no futuro
+// Calendário permite até 60 dias
+// → Se data > 60 dias: pode adicionar validação
+// → Exibir mensagem: "Agendamentos disponíveis até 60 dias"

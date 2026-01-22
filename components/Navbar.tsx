@@ -2,9 +2,10 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
-import { Store, Menu, ShoppingBag } from "lucide-react";
+import { Menu, ShoppingBag } from "lucide-react";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { useCart } from "@/contexts/CartContext";
 
@@ -18,57 +19,43 @@ export default function Navbar() {
 
   return (
     <header className="w-full border-b bg-white dark:bg-neutral-900">
-      <div className="relative max-w-7xl mx-auto h-14 px-4 sm:px-6 flex items-center">
-        {/* ESQUERDA - Mobile: Toggle + Logo */}
-        <div className="flex items-center gap-3">
-          {/* Mobile: Toggle */}
-          <button
-            onClick={toggleSidebar}
-            className="p-2 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 md:hidden"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-
-          {/* Mobile: Logo ao lado do toggle */}
-          <Link
-            href="/"
-            aria-label="Página inicial"
-            className="flex items-center justify-center p-1.5 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors md:hidden"
-          >
-            <Store className="w-6 h-6 text-neutral-800 dark:text-neutral-100" />
-          </Link>
-    
-          {/* Desktop: "Sua loja" */}
-          {!isDashboard && (
-            <Link
-              href="/"
-              className="hidden md:inline-block px-3 py-1.5 rounded-lg border border-neutral-300 text-sm font-semibold text-neutral-800 hover:bg-neutral-100 transition-colors dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
-            >
-              Sua loja
-            </Link>
-          )}
-        </div>
+      <div className="relative max-w-7xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between">
+        {/* ESQUERDA - Toggle (Mobile e Desktop) */}
+        <button
+          onClick={toggleSidebar}
+          className="p-2 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 shrink-0"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
         
-        {/* CENTRO ABSOLUTO — logo desktop */}
-        <div className="absolute left-1/2 -translate-x-1/2 hidden md:block">
+        {/* CENTRO ABSOLUTO — Logo (Mobile e Desktop) */}
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
           <Link
             href="/"
             aria-label="Página inicial"
             className="flex items-center justify-center px-2 py-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
           >
-            <Store className="w-7 h-7 text-neutral-800 dark:text-neutral-100" />
+            <Image
+              src="/images/brand/image-removebg-preview-1.webp"
+              alt="Logo"
+              width={120}
+              height={40}
+              className="h-8 w-auto"
+              priority
+            />
           </Link>
         </div>
         
-        {/* DIREITA */}
-        <nav className="ml-auto flex items-center gap-3 sm:gap-4">
-          {/* Desktop - Links + Carrinho juntos */}
+        {/* DIREITA - Ícones e Menu */}
+        <nav className="flex items-center gap-3 sm:gap-4 shrink-0">
+          {/* Desktop - Ações + Carrinho */}
           <div className="hidden md:flex items-center gap-3">
-            <Link href="/products" className="text-sm hover:underline">
-              Produtos
+            <Link href="/services" className="text-sm hover:underline">
+              Serviços
             </Link>
-
-            {/* Cart icon with badge */}
+            <Link href="/schedules" className="text-sm hover:underline">
+              Agendar
+            </Link>
             <Link
               href="/checkout"
               className="relative p-2 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
@@ -81,7 +68,7 @@ export default function Navbar() {
                 </span>
               )}
             </Link>
-          
+
             {session ? (
               <>
                 {!isDashboard && (
@@ -107,7 +94,7 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile - Apenas Carrinho */}
+          {/* Mobile - Carrinho */}
           <Link
             href="/checkout"
             className="relative p-2 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors md:hidden"

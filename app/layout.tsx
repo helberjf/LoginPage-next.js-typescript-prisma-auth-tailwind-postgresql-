@@ -3,8 +3,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import Providers from "@/components/Providers";
 import Navbar from "@/components/Navbar";
-import { auth } from "@/auth";
-import SidebarMobile from "@/components/SidebarMobile";
+import PublicSidebarShell from "@/components/PublicSidebarShell";
 import { SidebarProvider } from "@/contexts/SidebarContext";
 import { CartProvider } from "@/contexts/CartContext";
 
@@ -18,8 +17,6 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
-
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
@@ -28,9 +25,9 @@ export default async function RootLayout({
             <SidebarProvider>
               {/* Navbar COMPLETO, sem reduzir nada */}
               <Navbar />
-              
-              {/* SidebarMobile para todos os usuários */}
-              <SidebarMobile user={session?.user || undefined} />
+
+              {/* Sidebar desktop e mobile para visitante */}
+              <PublicSidebarShell />
               
               {/* Main content */}
               {children}

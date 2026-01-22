@@ -24,8 +24,7 @@ export default function GuestCheckoutClient() {
     const formData = new FormData(e.currentTarget);
 
     const payload = {
-      productId,
-      quantity: 1,
+      items: [{ productId, quantity: 1 }],
       guest: {
         name: String(formData.get("name")),
         email: String(formData.get("email")),

@@ -62,6 +62,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         priceCents: product.priceCents,
         image: currentImage,
         discountPercent: product.discountPercent,
+        type: "PRODUCT", // Adicionar tipo
       });
       toast.success(`${product.name} adicionado ao carrinho!`, {
         description: "Continue comprando ou finalize seu pedido.",

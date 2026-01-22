@@ -24,16 +24,6 @@ type FormState = {
   state: string;
 };
 
-type ScheduleFormState = {
-  name: string;
-  email: string;
-  cpf: string;
-  phone: string;
-  date: string;
-  time: string;
-  notes: string;
-};
-
 type CheckoutResponse = {
   redirectUrl?: string;
   error?: string;
@@ -78,17 +68,6 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
     state: "",
   });
 
-  // Form para agendamento
-  const [scheduleForm, setScheduleForm] = useState<ScheduleFormState>({
-    name: "",
-    email: "",
-    cpf: "",
-    phone: "",
-    date: "",
-    time: "",
-    notes: "",
-  });
-
   const zipDigits = onlyDigits(form.zipCode);
 
   const cepReady = useMemo(() => {
@@ -120,32 +99,9 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
     );
   }, [isLogged, form, cepReady]);
 
-  const scheduleFormValid = useMemo(() => {
-    if (isLogged) return scheduleForm.date && scheduleForm.time;
-
-    const nameValid = hasSurname(scheduleForm.name);
-    const emailValid = scheduleForm.email.trim().length > 3;
-    const cpfValid = validateCpf(scheduleForm.cpf);
-    const phoneValid = onlyDigits(scheduleForm.phone).length >= 7;
-
-    return (
-      nameValid &&
-      emailValid &&
-      cpfValid &&
-      phoneValid &&
-      scheduleForm.date &&
-      scheduleForm.time
-    );
-  }, [isLogged, scheduleForm]);
-
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     const { name, value } = e.target;
     setForm((p) => ({ ...p, [name]: value }));
-  }
-
-  function handleScheduleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
-    const { name, value } = e.target;
-    setScheduleForm((p) => ({ ...p, [name]: value }));
   }
 
   async function fetchCep() {
@@ -201,7 +157,7 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
     setError(null);
 
     try {
-      await startCheckout({ productId, quantity: 1 });
+      await startCheckout({ items: [{ productId, quantity: 1 }] });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao iniciar pagamento");
       setLoading(false);
@@ -221,8 +177,7 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
 
     try {
       await startCheckout({
-        productId,
-        quantity: 1,
+        items: [{ productId, quantity: 1 }],
         guest: {
           name: form.name,
           email: form.email,
@@ -246,277 +201,61 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
     }
   }
 
-  async function handleScheduleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-
-    if (loading) return;
-
-    setError(null);
-
-    if (!scheduleFormValid) return;
-
-    setLoading(true);
-
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      alert(`Agendamento criado para ${scheduleForm.date} às ${scheduleForm.time}. Redirecionando para pagamento...`);
-      
-      const payload: Record<string, unknown> = {
-        productId,
-        quantity: 1,
-        schedule: {
-          date: scheduleForm.date,
-          time: scheduleForm.time,
-          notes: scheduleForm.notes,
-        },
-      };
-
-      if (!isLogged) {
-        payload.guest = {
-          name: scheduleForm.name,
-          email: scheduleForm.email,
-          cpf: scheduleForm.cpf,
-          phone: scheduleForm.phone,
-        };
-      }
-
-      await startCheckout(payload);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro ao criar agendamento");
-      setLoading(false);
-    }
-  }
+  // Funções de agendamento removidas - fluxo integrado com SchedulingFlow component
+  // O agendamento é feito via /schedules page com componente SchedulingFlow
 
   const base = "w-full rounded-md border px-2 py-1.5 text-xs sm:text-sm";
   const input = `${base} border-neutral-300 dark:border-neutral-700 bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100 disabled:opacity-60`;
   const readonly = `${input} bg-neutral-100 dark:bg-neutral-900 cursor-not-allowed`;
   const label = "text-[10px] sm:text-xs font-medium text-neutral-700 dark:text-neutral-300";
 
-  // Se for serviço/agendamento, mostra formulário diferente
+  // Se for serviço/agendamento, mostra botões para agendar e consultar serviços
   if (isServiceSchedule) {
     return (
-      <div className="rounded-xl border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20">
-        <button
-          type="button"
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full p-3 flex items-center justify-between text-left"
-          aria-expanded={isExpanded}
-          aria-label="Expandir opções de agendamento"
-        >
-          <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-green-900 dark:text-green-100">
-            <Calendar className="h-4 w-4 text-green-600" />
-            Agende seu serviço e pague com segurança
-          </div>
-          <ChevronDown className={`h-4 w-4 text-green-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-        </button>
+      <div className="rounded-xl border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20 p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <Calendar className="h-5 w-5 text-green-600" />
+          <h3 className="text-sm sm:text-base font-semibold text-green-900 dark:text-green-100">
+            Agende seu serviço
+          </h3>
+        </div>
 
-        {isExpanded && (
-          <div className="px-3 pb-3">
-            {isLogged ? (
-              <form onSubmit={handleScheduleSubmit} className="space-y-2.5">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <label className={label} htmlFor="schedule-date">
-                      Data
-                    </label>
-                    <input
-                      id="schedule-date"
-                      name="date"
-                      type="date"
-                      value={scheduleForm.date}
-                      onChange={handleScheduleChange}
-                      min={new Date().toISOString().split('T')[0]}
-                      className={input}
-                      required
-                    />
-                  </div>
+        <p className="text-xs sm:text-sm text-green-800 dark:text-green-200 mb-4">
+          Escolha uma das opções abaixo para prosseguir com seu agendamento.
+        </p>
 
-                  <div className="space-y-1">
-                    <label className={label} htmlFor="schedule-time">
-                      Horário
-                    </label>
-                    <input
-                      id="schedule-time"
-                      name="time"
-                      type="time"
-                      value={scheduleForm.time}
-                      onChange={handleScheduleChange}
-                      className={input}
-                      required
-                    />
-                  </div>
-                </div>
+        <div className="space-y-3">
+          <button
+            onClick={() => window.location.href = "/schedules"}
+            className="w-full rounded-lg bg-green-600 hover:bg-green-700 px-4 py-2.5 text-sm font-semibold text-white transition flex items-center justify-center gap-2"
+            aria-label="Ir para agendamentos"
+          >
+            <Calendar className="h-4 w-4" />
+            Agendar Agora
+          </button>
 
-                <div className="space-y-1">
-                  <label className={label} htmlFor="schedule-notes">
-                    Observações (opcional)
-                  </label>
-                  <textarea
-                    id="schedule-notes"
-                    name="notes"
-                    value={scheduleForm.notes}
-                    onChange={handleScheduleChange}
-                    className={input}
-                    rows={2}
-                    placeholder="Detalhes do serviço..."
-                  />
-                </div>
+          <button
+            onClick={() => window.location.href = "/checkout/payment?productId=" + productId}
+            className="w-full rounded-lg border-2 border-green-600 bg-white hover:bg-green-50 text-green-600 hover:text-green-700 px-4 py-2.5 text-sm font-semibold transition flex items-center justify-center gap-2"
+            aria-label="Ir para checkout de pagamento"
+          >
+            <ShieldCheck className="h-4 w-4" />
+            Pagar para Agendar
+          </button>
 
-                {error && (
-                  <div className="rounded-md border border-red-200 bg-red-50 px-2.5 py-2 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
-                    {error}
-                  </div>
-                )}
+          <button
+            onClick={() => window.location.href = "/schedules"}
+            className="w-full rounded-lg border border-green-600 bg-green-50 hover:bg-green-100 text-green-700 px-4 py-2.5 text-sm font-medium transition flex items-center justify-center gap-2"
+            aria-label="Consultar serviços"
+          >
+            <Calendar className="h-4 w-4" />
+            Consultar Serviços
+          </button>
+        </div>
 
-                <button
-                  type="submit"
-                  disabled={loading || !scheduleFormValid}
-                  className="w-full rounded-md bg-green-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                >
-                  {loading ? "Processando..." : "Pagar via MercadoPago"}
-                </button>
-
-                <p className="text-[10px] sm:text-xs text-neutral-600 dark:text-neutral-400">
-                  Após o pagamento, seu agendamento será confirmado automaticamente.
-                </p>
-              </form>
-            ) : (
-              <form onSubmit={handleScheduleSubmit} className="space-y-2.5">
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <div className="space-y-1 sm:col-span-2">
-                    <label className={label} htmlFor="schedule-name">
-                      Nome completo
-                    </label>
-                    <input
-                      id="schedule-name"
-                      name="name"
-                      value={scheduleForm.name}
-                      onChange={handleScheduleChange}
-                      className={input}
-                      placeholder="Ex: João Silva"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-1 sm:col-span-2">
-                    <label className={label} htmlFor="schedule-email">
-                      Email
-                    </label>
-                    <input
-                      id="schedule-email"
-                      name="email"
-                      type="email"
-                      value={scheduleForm.email}
-                      onChange={handleScheduleChange}
-                      className={input}
-                      placeholder="seu@email.com"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <label className={label} htmlFor="schedule-cpf">
-                      CPF
-                    </label>
-                    <input
-                      id="schedule-cpf"
-                      name="cpf"
-                      value={scheduleForm.cpf}
-                      onChange={handleScheduleChange}
-                      className={input}
-                      placeholder="000.000.000-00"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className={label} htmlFor="schedule-phone">
-                      Telefone
-                    </label>
-                    <input
-                      id="schedule-phone"
-                      name="phone"
-                      value={scheduleForm.phone}
-                      onChange={handleScheduleChange}
-                      className={input}
-                      placeholder="(00) 00000-0000"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <label className={label} htmlFor="schedule-date-guest">
-                      Data
-                    </label>
-                    <input
-                      id="schedule-date-guest"
-                      name="date"
-                      type="date"
-                      value={scheduleForm.date}
-                      onChange={handleScheduleChange}
-                      min={new Date().toISOString().split('T')[0]}
-                      className={input}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className={label} htmlFor="schedule-time-guest">
-                      Horário
-                    </label>
-                    <input
-                      id="schedule-time-guest"
-                      name="time"
-                      type="time"
-                      value={scheduleForm.time}
-                      onChange={handleScheduleChange}
-                      className={input}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className={label} htmlFor="schedule-notes-guest">
-                    Observações (opcional)
-                  </label>
-                  <textarea
-                    id="schedule-notes-guest"
-                    name="notes"
-                    value={scheduleForm.notes}
-                    onChange={handleScheduleChange}
-                    className={input}
-                    rows={2}
-                    placeholder="Detalhes do serviço..."
-                  />
-                </div>
-
-                {error && (
-                  <div className="rounded-md border border-red-200 bg-red-50 px-2.5 py-2 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
-                    {error}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={loading || !scheduleFormValid}
-                  className="w-full rounded-md bg-green-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                >
-                  {loading ? "Processando..." : "Pagar via MercadoPago"}
-                </button>
-
-                <p className="text-[10px] sm:text-xs text-neutral-600 dark:text-neutral-400">
-                  Após o pagamento, seu agendamento será confirmado automaticamente.
-                </p>
-              </form>
-            )}
-          </div>
-        )}
+        <p className="text-[10px] sm:text-xs text-green-700 dark:text-green-300 mt-3 text-center">
+          Agendamento rápido e seguro
+        </p>
       </div>
     );
   }
@@ -524,6 +263,18 @@ export default function PurchaseBoxClient({ productId, isLogged, isServiceSchedu
   // Formulário normal de compra
   return (
     <div className="rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+      {/* Botão de compra rápida */}
+      <div className="p-3 border-b border-neutral-200 dark:border-neutral-700">
+        <button
+          onClick={() => window.location.href = "/checkout/payment?productId=" + productId}
+          className="w-full rounded-lg bg-green-600 hover:bg-green-700 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition flex items-center justify-center gap-2"
+          aria-label="Ir para checkout de pagamento"
+        >
+          <ShieldCheck className="h-4 w-4" />
+          Comprar Agora
+        </button>
+      </div>
+
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}

@@ -1,8 +1,9 @@
+// app/checkout/payment/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ShieldCheck, ArrowLeft } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
@@ -25,6 +26,14 @@ type FormState = {
 type CheckoutResponse = {
   redirectUrl?: string;
   error?: string;
+  orderId?: string;
+};
+
+type CepResponse = {
+  street: string;
+  district: string;
+  city: string;
+  state: string;
 };
 
 function onlyDigits(v: string) {
@@ -39,6 +48,7 @@ function hasSurname(name: string) {
 export default function CheckoutPaymentPage() {
   const { data: session } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { items, clearCart } = useCart();
 
   const [loading, setLoading] = useState(false);
@@ -46,6 +56,8 @@ export default function CheckoutPaymentPage() {
 
   const [cepLoading, setCepLoading] = useState(false);
   const [cepError, setCepError] = useState<string | null>(null);
+
+  const productId = searchParams.get('productId');
 
   const [form, setForm] = useState<FormState>({
     name: "",
@@ -62,15 +74,14 @@ export default function CheckoutPaymentPage() {
   });
 
   const zipDigits = onlyDigits(form.zipCode);
-
   const cepReady = zipDigits.length === 8 && !cepError;
 
   const formValid = session
-    ? true // Logged users don't need form validation here (they should have data in profile)
+    ? true
     : hasSurname(form.name) &&
       form.email.trim().length > 3 &&
       validateCpf(form.cpf) &&
-      onlyDigits(form.phone).length >= 7 &&
+      onlyDigits(form.phone).length >= 10 &&
       cepReady &&
       form.street.trim().length > 0 &&
       form.district.trim().length > 0 &&
@@ -89,10 +100,10 @@ export default function CheckoutPaymentPage() {
   );
 
   useEffect(() => {
-    if (items.length === 0) {
+    if (items.length === 0 && !productId) {
       router.replace("/checkout");
     }
-  }, [items, router]);
+  }, [items, router, productId]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target;
@@ -112,12 +123,7 @@ export default function CheckoutPaymentPage() {
         return;
       }
 
-      const data = (await res.json()) as {
-        street: string;
-        district: string;
-        city: string;
-        state: string;
-      };
+      const data = await res.json() as CepResponse;
 
       setForm((p) => ({
         ...p,
@@ -126,27 +132,27 @@ export default function CheckoutPaymentPage() {
         city: data.city,
         state: data.state,
       }));
-    } catch {
+    } catch (fetchError) {
+      console.error("CEP fetch error:", fetchError);
       setCepError("Erro ao buscar CEP");
     } finally {
       setCepLoading(false);
     }
   }
 
-  async function startCheckout(payload: unknown) {
+  async function startCheckout(payload: Record<string, unknown>) {
     const res = await fetch("/api/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
 
-    const data = (await res.json()) as CheckoutResponse;
+    const data = await res.json() as CheckoutResponse;
 
     if (!res.ok || !data.redirectUrl) {
       throw new Error(data.error ?? "Erro ao iniciar pagamento");
     }
 
-    // Clear cart after successful checkout initiation
     clearCart();
     window.location.href = data.redirectUrl;
   }
@@ -158,12 +164,14 @@ export default function CheckoutPaymentPage() {
     setError(null);
 
     try {
-      await startCheckout({
+      const payload: Record<string, unknown> = {
         items: items.map((item) => ({
           productId: item.id,
           quantity: item.quantity,
         })),
-      });
+      };
+
+      await startCheckout(payload);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao iniciar pagamento");
       setLoading(false);
@@ -177,12 +185,15 @@ export default function CheckoutPaymentPage() {
 
     setError(null);
 
-    if (!formValid) return;
+    if (!formValid) {
+      setError("Por favor, preencha todos os campos obrigatórios corretamente");
+      return;
+    }
 
     setLoading(true);
 
     try {
-      await startCheckout({
+      const payload: Record<string, unknown> = {
         items: items.map((item) => ({
           productId: item.id,
           quantity: item.quantity,
@@ -190,12 +201,12 @@ export default function CheckoutPaymentPage() {
         guest: {
           name: form.name,
           email: form.email,
-          cpf: form.cpf,
-          phone: form.phone,
+          cpf: onlyDigits(form.cpf),
+          phone: onlyDigits(form.phone),
           address: {
             street: form.street,
             number: form.number,
-            complement: form.complement ? form.complement : null,
+            complement: form.complement || null,
             district: form.district,
             city: form.city,
             state: form.state,
@@ -203,41 +214,45 @@ export default function CheckoutPaymentPage() {
             country: "BR",
           },
         },
-      });
+      };
+
+      await startCheckout(payload);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao iniciar pagamento");
       setLoading(false);
     }
   }
 
-  const base = "w-full rounded-md border px-2.5 py-1.5 text-sm";
-  const input = `${base} border-neutral-300 dark:border-neutral-700 bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100 disabled:opacity-60`;
+  const base = "w-full rounded-md border px-3 py-2 text-sm transition";
+  const input = `${base} border-neutral-300 dark:border-neutral-700 bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100 disabled:opacity-60 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900`;
   const readonly = `${input} bg-neutral-100 dark:bg-neutral-900 cursor-not-allowed`;
-  const label = "text-xs font-medium text-neutral-700 dark:text-neutral-300";
+  const label = "text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1 block";
+
+  if (items.length === 0 && !productId) {
+    return null;
+  }
 
   return (
-    <main className="min-h-screen bg-white dark:bg-neutral-950">
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
+    <main className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
+      <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8">
+        <div className="mb-6 sm:mb-8">
           <Link
             href="/checkout"
-            className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 mb-4"
+            className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 mb-4 transition"
           >
             <ArrowLeft className="w-4 h-4" />
             Voltar ao carrinho
           </Link>
-          <h1 className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
+          <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-neutral-100">
             Finalizar compra
           </h1>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Form */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           <div className="lg:col-span-2">
-            <div className="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+            <div className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-6 dark:border-neutral-800 dark:bg-neutral-900">
               <div className="flex items-center gap-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100 mb-6">
-                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                <ShieldCheck className="h-5 w-5 text-emerald-600" />
                 Pagamento seguro via MercadoPago
               </div>
 
@@ -249,17 +264,17 @@ export default function CheckoutPaymentPage() {
                     </p>
                   </div>
 
-                  {error ? (
+                  {error && (
                     <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
                       {error}
                     </div>
-                  ) : null}
+                  )}
 
                   <button
                     type="button"
                     disabled={loading}
                     onClick={handleLoggedCheckout}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg disabled:opacity-50"
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
                   >
                     {loading ? "Processando..." : "Pagar com MercadoPago"}
                   </button>
@@ -267,9 +282,9 @@ export default function CheckoutPaymentPage() {
               ) : (
                 <form onSubmit={handleGuestSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-1">
+                    <div className="sm:col-span-2">
                       <label className={label} htmlFor="name">
-                        Nome completo
+                        Nome completo *
                       </label>
                       <input
                         id="name"
@@ -277,13 +292,14 @@ export default function CheckoutPaymentPage() {
                         value={form.name}
                         onChange={handleChange}
                         className={input}
+                        placeholder="Ex: João Silva"
                         required
                       />
                     </div>
 
-                    <div className="space-y-1">
+                    <div className="sm:col-span-2">
                       <label className={label} htmlFor="email">
-                        Email
+                        Email *
                       </label>
                       <input
                         id="email"
@@ -292,15 +308,16 @@ export default function CheckoutPaymentPage() {
                         value={form.email}
                         onChange={handleChange}
                         className={input}
+                        placeholder="seu@email.com"
                         required
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-1">
+                    <div>
                       <label className={label} htmlFor="cpf">
-                        CPF
+                        CPF *
                       </label>
                       <input
                         id="cpf"
@@ -308,13 +325,14 @@ export default function CheckoutPaymentPage() {
                         value={form.cpf}
                         onChange={handleChange}
                         className={input}
+                        placeholder="000.000.000-00"
                         required
                       />
                     </div>
 
-                    <div className="space-y-1">
+                    <div>
                       <label className={label} htmlFor="phone">
-                        Telefone
+                        Telefone *
                       </label>
                       <input
                         id="phone"
@@ -322,15 +340,16 @@ export default function CheckoutPaymentPage() {
                         value={form.phone}
                         onChange={handleChange}
                         className={input}
+                        placeholder="(00) 00000-0000"
                         required
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-1">
+                    <div>
                       <label className={label} htmlFor="zipCode">
-                        CEP
+                        CEP *
                       </label>
                       <input
                         id="zipCode"
@@ -339,24 +358,25 @@ export default function CheckoutPaymentPage() {
                         onChange={handleChange}
                         onBlur={fetchCep}
                         className={input}
+                        placeholder="00000-000"
                         required
                       />
 
-                      {cepLoading ? (
-                        <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+                      {cepLoading && (
+                        <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                           <span className="h-3 w-3 animate-spin rounded-full border-2 border-neutral-400 border-t-transparent" />
                           Buscando CEP...
                         </div>
-                      ) : null}
+                      )}
 
-                      {cepError ? (
-                        <p className="text-xs text-red-500">{cepError}</p>
-                      ) : null}
+                      {cepError && (
+                        <p className="text-xs text-red-500 mt-1">{cepError}</p>
+                      )}
                     </div>
 
-                    <div className="space-y-1">
+                    <div>
                       <label className={label} htmlFor="number">
-                        Número
+                        Número *
                       </label>
                       <input
                         id="number"
@@ -364,37 +384,38 @@ export default function CheckoutPaymentPage() {
                         value={form.number}
                         onChange={handleChange}
                         className={input}
+                        placeholder="123"
                         required
                         disabled={!cepReady}
                       />
                     </div>
                   </div>
 
-                  {cepReady ? (
+                  {cepReady && (
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <div className="space-y-1">
+                      <div>
                         <label className={label}>Rua</label>
                         <input value={form.street} readOnly className={readonly} />
                       </div>
 
-                      <div className="space-y-1">
+                      <div>
                         <label className={label}>Bairro</label>
                         <input value={form.district} readOnly className={readonly} />
                       </div>
 
-                      <div className="space-y-1">
+                      <div>
                         <label className={label}>Cidade</label>
                         <input value={form.city} readOnly className={readonly} />
                       </div>
 
-                      <div className="space-y-1">
+                      <div>
                         <label className={label}>UF</label>
                         <input value={form.state} readOnly className={readonly} />
                       </div>
 
-                      <div className="space-y-1 sm:col-span-2">
+                      <div className="sm:col-span-2">
                         <label className={label} htmlFor="complement">
-                          Complemento
+                          Complemento (opcional)
                         </label>
                         <input
                           id="complement"
@@ -402,32 +423,36 @@ export default function CheckoutPaymentPage() {
                           value={form.complement}
                           onChange={handleChange}
                           className={input}
+                          placeholder="Apto 101, Bloco A"
                         />
                       </div>
                     </div>
-                  ) : null}
+                  )}
 
-                  {error ? (
+                  {error && (
                     <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
                       {error}
                     </div>
-                  ) : null}
+                  )}
 
                   <button
                     type="submit"
                     disabled={loading || !formValid}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg disabled:opacity-50"
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
                   >
                     {loading ? "Processando..." : "Pagar com MercadoPago"}
                   </button>
+
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 text-center">
+                    * Campos obrigatórios
+                  </p>
                 </form>
               )}
             </div>
           </div>
 
-          {/* Order Summary */}
           <div className="lg:col-span-1">
-            <div className="bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg p-6 space-y-4 sticky top-4">
+            <div className="bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg p-4 sm:p-6 space-y-4 sticky top-4">
               <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
                 Resumo do pedido
               </h2>
@@ -441,6 +466,7 @@ export default function CheckoutPaymentPage() {
 
                   return (
                     <div key={item.id} className="flex gap-3 text-sm">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={item.image ?? "/placeholder.png"}
                         alt={item.name}

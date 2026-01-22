@@ -50,7 +50,7 @@ export const SidebarNav: SidebarItem[] = [
   },
   {
     label: "Agendamentos",
-    href: "/dashboard/schedules",
+    href: "/schedules",
     icon: Calendar,
     customerOnly: true,
   },

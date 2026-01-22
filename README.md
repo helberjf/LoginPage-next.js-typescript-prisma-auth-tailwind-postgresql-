@@ -326,6 +326,40 @@ GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 ```
 
+
+### Pagamento
+
+📋 Arquivos Essenciais para o Pagamento:
+APIs (Backend):
+app/api/checkout/route.ts ✅ - Inicia o checkout e cria a preference no Mercado Pago
+app/api/mercadopago/webhook/route.ts ✅ - Recebe notificações do Mercado Pago sobre pagamentos
+APIs Adicionais Necessárias:
+app/api/cep/route.ts - Consulta CEP para preenchimento automático de endereço
+lib/validators/validateCpf.ts - Validação de CPF
+Páginas (Frontend):
+app/checkout/page.tsx - Carrinho de compras
+app/checkout/payment/page.tsx - Formulário de checkout/pagamento
+app/checkout/success/page.tsx - Página de confirmação/sucesso
+Contexto/Estado:
+contexts/CartContext.tsx - Gerenciamento do carrinho de compras
+🔄 Fluxo Completo do Pagamento:
+Usuário adiciona produtos ao carrinho (CartContext)
+Página do carrinho mostra itens e redireciona para checkout
+Página de pagamento coleta dados do usuário e faz chamada para /api/checkout
+API de checkout valida dados, cria pedido no banco e gera preference no Mercado Pago
+Usuário é redirecionado para checkout do Mercado Pago
+Mercado Pago processa o pagamento e envia webhook
+Webhook recebe notificação e atualiza status do pedido
+Página de sucesso mostra confirmação com dados do pedido
+⚙️ Configurações Necessárias:
+As seguintes variáveis de ambiente são necessárias:
+MP_ACCESS_TOKEN - Token de acesso do Mercado Pago
+MP_WEBHOOK_SECRET - Segredo para validação de webhooks
+MP_WEBHOOK_URL - URL do webhook (opcional, usa origem da requisição)
+🎯 O webhook é crucial para atualizar o status dos pagamentos automaticamente quando o Mercado Pago notifica sobre mudanças no status do pagamento.
+
+
+
 ### Produção
 Para produção, certifique-se de:
 - Definir `NEXTAUTH_URL` com o domínio real

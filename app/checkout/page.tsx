@@ -27,13 +27,13 @@ export default function CheckoutPage() {
             Seu carrinho está vazio
           </h1>
           <p className="text-neutral-600 dark:text-neutral-400">
-            Adicione produtos para continuar
+            Adicione itens para continuar
           </p>
           <Link
             href="/products"
             className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition"
           >
-            Ver produtos
+            Ver catálogo
           </Link>
         </div>
       </main>
@@ -44,7 +44,7 @@ export default function CheckoutPage() {
     <main className="min-h-screen bg-white dark:bg-neutral-950">
       <div className="max-w-4xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold text-neutral-900 dark:text-neutral-100 mb-8">
-          Carrinho de compras
+          Finalizar compra
         </h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -58,7 +58,7 @@ export default function CheckoutPage() {
 
               return (
                 <div
-                  key={item.id}
+                  key={`${item.type}:${item.id}`}
                   className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg p-4 flex gap-4"
                 >
                   <img
@@ -82,7 +82,7 @@ export default function CheckoutPage() {
                       <div className="flex items-center border border-neutral-300 dark:border-neutral-700 rounded-md">
                         <button
                           type="button"
-                          onClick={() => updateQuantity(item.id, -1)}
+                          onClick={() => updateQuantity(item.id, item.type, -1)}
                           className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
                         >
                           <Minus className="w-4 h-4" />
@@ -92,7 +92,7 @@ export default function CheckoutPage() {
                         </span>
                         <button
                           type="button"
-                          onClick={() => updateQuantity(item.id, 1)}
+                          onClick={() => updateQuantity(item.id, item.type, 1)}
                           className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
                         >
                           <Plus className="w-4 h-4" />
@@ -100,7 +100,7 @@ export default function CheckoutPage() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => removeItem(item.id)}
+                        onClick={() => removeItem(item.id, item.type)}
                         className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -144,7 +144,7 @@ export default function CheckoutPage() {
                 href="/checkout/payment"
                 className="block w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg text-center transition"
               >
-                Finalizar compra
+                Ir para pagamento
               </Link>
               <Link
                 href="/products"

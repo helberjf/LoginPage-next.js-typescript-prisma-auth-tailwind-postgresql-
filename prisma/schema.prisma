@@ -1,3 +1,5 @@
+// schema.prisma - Versão Completa e Otimizada
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -69,6 +71,22 @@ enum ScheduleType {
   MEETING
 }
 
+enum NotificationType {
+  ORDER_CONFIRMED
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  SCHEDULE_CONFIRMED
+  SCHEDULE_REMINDER
+  SCHEDULE_CANCELLED
+  PAYMENT_RECEIVED
+  REVIEW_REQUEST
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
 ////////////////////
 // USER
 ////////////////////
@@ -93,11 +111,23 @@ model User {
   orders        Order[]
   userEvents    UserEvent[]
 
-  // Cliente
-  schedules     Schedule[] @relation("ScheduleCustomer")
+  // Agendamentos
+  schedules           Schedule[] @relation("ScheduleCustomer")
+  employeeSchedules   Schedule[] @relation("ScheduleEmployee")
+  availability        EmployeeAvailability[] @relation("EmployeeAvailability")
+  createdSchedules    Schedule[] @relation("ScheduleCreatedBy")
 
-  // Funcionário (STAFF)
-  employeeSchedules Schedule[] @relation("ScheduleEmployee")
+  // Reviews
+  productReviews      ProductReview[]
+  employeeReviews     ServiceReview[] @relation("EmployeeReviews")
+  customerReviews     ServiceReview[] @relation("CustomerReviews")
+
+  // Carrinho e Wishlist
+  cart                Cart?
+  wishlist            Wishlist?
+
+  // Notificações
+  notifications       Notification[]
 
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
@@ -116,7 +146,6 @@ model UserProfile {
 
   cpf       String?  @unique
   phone     String?
-
   birthDate DateTime?
   gender    Gender   @default(OTHER)
 
@@ -202,6 +231,9 @@ model Product {
 
   images      ProductImage[]
   orderItems  OrderItem[]
+  reviews     ProductReview[]
+  cartItems   CartItem[]
+  wishlistItems WishlistItem[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -227,6 +259,232 @@ model ProductImage {
 }
 
 ////////////////////
+// PRODUCT REVIEW (NOVO)
+////////////////////
+
+model ProductReview {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  guestName  String?
+  guestEmail String?
+
+  rating     Int      // 1-5
+  comment    String?
+  verified   Boolean  @default(false) // Compra verificada
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([productId])
+  @@index([userId])
+  @@index([rating])
+}
+
+////////////////////
+// SERVICE CATEGORY
+////////////////////
+
+model ServiceCategory {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  active      Boolean  @default(true)
+
+  services    Service[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([active])
+  @@index([slug])
+}
+
+////////////////////
+// SERVICE
+////////////////////
+
+model Service {
+  id            String   @id @default(cuid())
+
+  name          String
+  description   String?
+  durationMins  Int      @default(30)
+  priceCents    Int?
+
+  categoryId    String
+  category      ServiceCategory @relation(fields: [categoryId], references: [id])
+
+  images        ServiceImage[]
+  schedules     Schedule[]
+  reviews       ServiceReview[]
+
+  // Ratings calculados
+  ratingAverage Float @default(0)
+  ratingCount   Int   @default(0)
+
+  active        Boolean  @default(true)
+  deletedAt     DateTime?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([active])
+}
+
+////////////////////
+// SERVICE IMAGE
+////////////////////
+
+model ServiceImage {
+  id        String @id @default(cuid())
+  serviceId String
+  url       String
+  position  Int
+
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceId, position])
+}
+
+////////////////////
+// SERVICE REVIEW (NOVO)
+////////////////////
+
+model ServiceReview {
+  id         String   @id @default(cuid())
+  scheduleId String   @unique
+  schedule   Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  serviceId  String
+  service    Service  @relation(fields: [serviceId], references: [id])
+
+  employeeId String?
+  employee   User?    @relation("EmployeeReviews", fields: [employeeId], references: [id], onDelete: SetNull)
+
+  userId     String?
+  user       User?    @relation("CustomerReviews", fields: [userId], references: [id], onDelete: SetNull)
+
+  rating     Int      // 1-5
+  comment    String?
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([serviceId])
+  @@index([employeeId])
+  @@index([rating])
+}
+
+////////////////////
+// CART (NOVO)
+////////////////////
+
+model Cart {
+  id        String     @id @default(cuid())
+
+  userId    String?    @unique
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  sessionId String?    @unique
+
+  items     CartItem[]
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  expiresAt DateTime?
+
+  @@index([sessionId])
+  @@index([expiresAt])
+}
+
+model CartItem {
+  id         String  @id @default(cuid())
+  cartId     String
+  cart       Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  productId  String
+  product    Product @relation(fields: [productId], references: [id])
+
+  quantity   Int
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([cartId, productId])
+  @@index([cartId])
+}
+
+////////////////////
+// WISHLIST (NOVO)
+////////////////////
+
+model Wishlist {
+  id        String         @id @default(cuid())
+  userId    String         @unique
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  items     WishlistItem[]
+
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+model WishlistItem {
+  id         String   @id @default(cuid())
+  wishlistId String
+  wishlist   Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
+
+  @@unique([wishlistId, productId])
+}
+
+////////////////////
+// COUPON (MELHORADO)
+////////////////////
+
+model Coupon {
+  id            String       @id @default(cuid())
+
+  code          String       @unique
+  description   String?
+
+  discountType  DiscountType
+  discountValue Int
+
+  minPurchase   Int?
+  maxDiscount   Int?
+
+  usageLimit    Int?
+  usageCount    Int          @default(0)
+
+  perUserLimit  Int?
+
+  validFrom     DateTime
+  validUntil    DateTime
+
+  active        Boolean      @default(true)
+
+  orders        Order[]
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([code])
+  @@index([active, validFrom, validUntil])
+}
+
+////////////////////
 // ORDER
 ////////////////////
 
@@ -245,9 +503,15 @@ model Order {
   totalCents    Int
   currency      String      @default("BRL")
 
+  // Cupom
+  couponId      String?
+  coupon        Coupon?     @relation(fields: [couponId], references: [id])
+  discountCents Int         @default(0)
+
   items         OrderItem[]
   payments      Payment[]
   schedules     Schedule[]
+  notifications Notification[]
 
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -297,6 +561,35 @@ model Payment {
 
   @@index([status])
   @@index([mpPaymentId])
+}
+
+////////////////////
+// NOTIFICATION (NOVO)
+////////////////////
+
+model Notification {
+  id         String           @id @default(cuid())
+
+  userId     String?
+  user       User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  scheduleId String?
+  schedule   Schedule?        @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  orderId    String?
+  order      Order?           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  type       NotificationType
+  title      String
+  message    String
+
+  read       Boolean          @default(false)
+  sentAt     DateTime?
+
+  createdAt  DateTime         @default(now())
+
+  @@index([userId, read])
+  @@index([createdAt])
 }
 
 ////////////////////
@@ -371,45 +664,85 @@ model WebhookEvent {
 
   processed   Boolean  @default(false)
   processedAt DateTime?
+  error       String?
   createdAt   DateTime @default(now())
 
   @@index([providerId])
 }
 
 ////////////////////
-// SCHEDULE (AGENDA COM FUNCIONÁRIO)
+// EMPLOYEE AVAILABILITY
+////////////////////
+
+model EmployeeAvailability {
+  id              String   @id @default(cuid())
+
+  employeeId      String
+  employee        User     @relation("EmployeeAvailability", fields: [employeeId], references: [id], onDelete: Cascade)
+
+  dayOfWeek       Int
+  startTime       String
+  endTime         String
+  breakStartTime  String?
+  breakEndTime    String?
+
+  active          Boolean  @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([employeeId, dayOfWeek])
+  @@index([employeeId])
+}
+
+////////////////////
+// SCHEDULE
 ////////////////////
 
 model Schedule {
-  id            String         @id @default(cuid())
+  id               String         @id @default(cuid())
 
-  // Cliente
-  userId        String?
-  user          User?          @relation("ScheduleCustomer", fields: [userId], references: [id])
+  userId           String?
+  user             User?          @relation("ScheduleCustomer", fields: [userId], references: [id], onDelete: SetNull)
 
-  guestName     String?
-  guestPhone    String?
+  guestName        String?
+  guestEmail       String?
+  guestPhone       String?
 
-  // Funcionário responsável (APENAS UM)
-  employeeId    String?        
-  employee      User?           @relation("ScheduleEmployee", fields: [employeeId], references: [id])
+  employeeId       String?
+  employee         User?          @relation("ScheduleEmployee", fields: [employeeId], references: [id], onDelete: SetNull)
 
-  type          ScheduleType   @default(SERVICE)
-  status        ScheduleStatus @default(PENDING)
+  serviceId        String
+  service          Service        @relation(fields: [serviceId], references: [id], onDelete: Restrict)
 
-  startAt       DateTime
-  endAt         DateTime
+  type             ScheduleType   @default(SERVICE)
+  status           ScheduleStatus @default(PENDING)
 
-  notes         String?
-  createdBy     Role
+  startAt          DateTime
+  endAt            DateTime
 
-  orderId       String?
-  order         Order?         @relation(fields: [orderId], references: [id])
+  notes            String?
 
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  createdByUserId  String?
+  createdByUser    User?          @relation("ScheduleCreatedBy", fields: [createdByUserId], references: [id])
+  createdByRole    Role
 
-  @@index([employeeId])
+  orderId          String?
+  order            Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  paymentStatus    PaymentStatus  @default(PENDING)
+  paymentId        String?
+
+  // Review e Notificações
+  review           ServiceReview?
+  notifications    Notification[]
+
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([employeeId, startAt, endAt])
   @@index([status])
   @@index([startAt])
+  @@index([serviceId])
+  @@index([paymentStatus])
 }
