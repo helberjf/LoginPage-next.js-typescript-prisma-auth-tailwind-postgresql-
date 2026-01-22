@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 import { format, isSameDay, startOfMonth, endOfMonth, isSameMonth } from "date-fns";
-import ptBR from "date-fns/locale/pt-BR";
+import { ptBR } from "date-fns/locale/pt-BR";
 import {
   Dialog,
   DialogTrigger,

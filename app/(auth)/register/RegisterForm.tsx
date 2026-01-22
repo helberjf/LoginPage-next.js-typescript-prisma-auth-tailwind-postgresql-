@@ -153,8 +153,25 @@ export default function RegisterForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...form,
+          name: form.name,
+          email: form.email,
+          password: form.password,
+          confirm: form.confirm,
+          cpf: form.cpf,
+          phoneCountry: form.phoneCountry,
           phone: phoneE164,
+          birthDate: form.birthDate,
+          gender: form.gender,
+          address: {
+            zipCode: cepDigits,
+            street: form.street,
+            number: form.number,
+            complement: form.complement || undefined,
+            district: form.district,
+            city: form.city,
+            state: form.state,
+            country: "BR",
+          },
         }),
       });
 

@@ -84,18 +84,22 @@ export async function POST(req: Request) {
     `${process.env.NEXT_PUBLIC_APP_URL}/reset/${rawToken}?email=${encodeURIComponent(email)}`;
 
 
-  await sendEmail({
-    to: email,
-    subject: "Redefinição de senha",
-    html: `
-      <p>Você solicitou a redefinição de senha.</p>
-      <p>
-        <a href="${resetUrl}">Redefinir senha</a>
-      </p>
-      <p>Este link expira em 30 minutos.</p>
-    `,
-  
-  });
+  try {
+    await sendEmail({
+      to: email,
+      subject: "Redefinição de senha",
+      html: `
+        <p>Você solicitou a redefinição de senha.</p>
+        <p>
+          <a href="${resetUrl}">Redefinir senha</a>
+        </p>
+        <p>Este link expira em 30 minutos.</p>
+      `,
+    });
+  } catch (mailError) {
+    console.error("Erro ao enviar email de redefinição:", mailError);
+    // Mantém resposta neutra para não vazar informações
+  }
 
   return NextResponse.json({ ok: true });
 }
