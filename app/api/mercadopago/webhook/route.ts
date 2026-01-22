@@ -164,10 +164,15 @@ export async function POST(req: Request) {
     const providerId = dataId !== undefined && dataId !== null ? String(dataId) : null;
 
     // Criar evento de webhook
+    const payloadJson: Prisma.InputJsonValue =
+      payload && typeof payload === "object"
+        ? (payload as Prisma.InputJsonValue)
+        : {};
+
     const event = await prisma.webhookEvent.create({
       data: {
         providerId,
-        payload: (payload ?? {}) as Prisma.JsonValue,
+        payload: payloadJson,
       },
       select: { id: true },
     });
