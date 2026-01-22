@@ -199,7 +199,7 @@ export default function RegisterForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-1">
       {/* NOME */}
-      <div className="space-y-[1px]">
+      <div className="space-y-px">
         <span className={label}>
           Nome completo{" "}
           {form.name && (
@@ -218,7 +218,7 @@ export default function RegisterForm() {
         />
       </div>
       {/* EMAIL */}
-      <div className="space-y-[1px]">
+      <div className="space-y-px">
         <span className={label}>Email</span>
         <input
           name="email"
@@ -233,7 +233,7 @@ export default function RegisterForm() {
 
       {/* CPF + GÊNERO */}
       <div className="grid grid-cols-2 gap-1">
-        <div className="space-y-[1px]">
+        <div className="space-y-px">
           <span className={label}>CPF</span>
           <input
             name="cpf"
@@ -244,7 +244,7 @@ export default function RegisterForm() {
           />
         </div>
 
-        <div className="space-y-[1px]">
+        <div className="space-y-px">
           <span className={label}>Gênero</span>
           <select
             name="gender"
@@ -261,7 +261,7 @@ export default function RegisterForm() {
 
       {/* TELEFONE */}
       <div className="grid grid-cols-[64px_1fr] gap-1">
-        <div className="space-y-[1px]">
+        <div className="space-y-px">
           <span className={label}>País</span>
           <select
             name="phoneCountry"
@@ -275,7 +275,7 @@ export default function RegisterForm() {
           </select>
         </div>
 
-        <div className="space-y-[1px]">
+        <div className="space-y-px">
           <span className={label}>Telefone</span>
           <div className="flex">
             {(form.phoneCountry === "BR" || form.phoneCountry === "US") && (
@@ -303,7 +303,7 @@ export default function RegisterForm() {
       </div>
 
       {/* NASCIMENTO */}
-      <div className="space-y-[1px]">
+      <div className="space-y-px">
         <span className={label}>Data de nascimento</span>
         <input
           name="birthDate"
@@ -316,7 +316,7 @@ export default function RegisterForm() {
       </div>
 
       {/* CEP */}
-      <div className="space-y-[1px]">
+      <div className="space-y-px">
         <span className={label}>CEP</span>
         <input
           name="zipCode"
@@ -343,7 +343,7 @@ export default function RegisterForm() {
       {/* ENDEREÇO */}
       {cepReady && (
         <>
-          <div className="space-y-[1px]">
+          <div className="space-y-px">
             <span className={label}>Rua</span>
             <input
               name="street"
@@ -354,24 +354,24 @@ export default function RegisterForm() {
             />
           </div>
 
-          <div className="space-y-[1px]">
+          <div className="space-y-px">
             <span className={label}>Bairro</span>
             <input value={form.district} readOnly className={readonly} />
           </div>
 
           <div className="grid grid-cols-2 gap-1">
-            <div className="space-y-[1px]">
+            <div className="space-y-px">
               <span className={label}>Cidade</span>
               <input value={form.city} readOnly className={readonly} />
             </div>
-            <div className="space-y-[1px]">
+            <div className="space-y-px">
               <span className={label}>UF</span>
               <input value={form.state} readOnly className={readonly} />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-1">
-            <div className="space-y-[1px]">
+            <div className="space-y-px">
               <span className={label}>Número</span>
               <input
                 name="number"
@@ -382,7 +382,7 @@ export default function RegisterForm() {
                 required
               />
             </div>
-            <div className="space-y-[1px]">
+            <div className="space-y-px">
               <span className={label}>Complemento</span>
               <input
                 name="complement"
@@ -397,7 +397,7 @@ export default function RegisterForm() {
       )}
 
       {/* SENHA */}
-      <div className="space-y-[1px]">
+      <div className="space-y-px">
         <span className={label}>Senha</span>
         <input
           name="password"
@@ -410,7 +410,7 @@ export default function RegisterForm() {
         />
       </div>
 
-      <div className="space-y-[1px]">
+      <div className="space-y-px">
         <span className={label}>Confirmar senha</span>
         <input
           name="confirm"
