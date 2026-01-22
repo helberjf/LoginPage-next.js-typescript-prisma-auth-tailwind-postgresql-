@@ -50,7 +50,6 @@ export async function POST(req: Request) {
         status: "PENDING",
         startAt: dateTime,
         endAt: new Date(dateTime.getTime() + 60 * 60 * 1000), // 1 hora
-        createdBy: "CUSTOMER",
         guestName: validatedData.name,
         guestPhone: validatedData.phone,
         notes: `Agendamento de visitante: ${validatedData.name} - ${validatedData.email} - Serviço: ${validatedData.serviceId}`,
