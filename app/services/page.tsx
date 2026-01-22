@@ -34,6 +34,7 @@ export default function ServicesPage() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [priceFilterOpen, setPriceFilterOpen] = useState(false);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
+  const [hideSearchBar, setHideSearchBar] = useState(false);
 
   // Fetch services e categorias
   useEffect(() => {
@@ -57,6 +58,29 @@ export default function ServicesPage() {
     };
 
     fetchData();
+  }, []);
+
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+    let ticking = false;
+
+    const onScroll = () => {
+      const currentY = window.scrollY;
+
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const shouldHide = currentY > lastScrollY && currentY > 80;
+          setHideSearchBar(shouldHide);
+          lastScrollY = currentY;
+          ticking = false;
+        });
+
+        ticking = true;
+      }
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   // Filtragem de serviços
@@ -99,7 +123,12 @@ export default function ServicesPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-900">
       {/* HEADER MOBILE-FIRST */}
-      <div className="sticky top-14 md:top-14 z-40 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 shadow-sm">
+      <div
+        className={cn(
+          "sticky top-14 md:top-14 z-40 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 shadow-sm transition-transform duration-300 will-change-transform",
+          hideSearchBar && "-translate-y-full pointer-events-none"
+        )}
+      >
         {/* Barra de Busca */}
         <div className="p-3 md:p-4">
           <div className="flex flex-col gap-2 md:flex-row md:items-center max-w-7xl mx-auto">
