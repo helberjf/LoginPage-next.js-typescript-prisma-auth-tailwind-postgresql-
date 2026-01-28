@@ -2,8 +2,32 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { removeAccents } from "@/lib/utils/utils";
+
+const R2_PUBLIC_URL = (process.env.R2_PUBLIC_URL ?? process.env.NEXT_PUBLIC_R2_PUBLIC_URL)?.replace(/\/$/, "");
+const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME;
+
+const normalizeR2Url = (url: string) => {
+  const trimmed = url.trim();
+  if (!trimmed) return trimmed;
+
+  if (R2_PUBLIC_URL && trimmed.includes("r2.cloudflarestorage.com")) {
+    try {
+      const parsed = new URL(trimmed);
+      let path = parsed.pathname;
+      if (R2_BUCKET_NAME && path.startsWith(`/${R2_BUCKET_NAME}/`)) {
+        path = path.replace(`/${R2_BUCKET_NAME}`, "");
+      }
+      return `${R2_PUBLIC_URL}${path}`;
+    } catch {
+      return trimmed;
+    }
+  }
+
+  return trimmed;
+};
 
 /**
  * Validators
@@ -66,13 +90,18 @@ export async function GET(request: Request) {
 
     const productWithUrls = {
       ...product,
-      images: product.images.map((img) => ({
-        url:
-          img.storage === "R2" || img.path.startsWith("http")
-            ? img.path
-            : `/uploads/${img.path}`,
-        position: img.position,
-      })),
+      images: product.images.map((img) => {
+        const normalizedPath = normalizeR2Url(img.path);
+        return {
+          url:
+            img.storage === "R2" || normalizedPath.startsWith("http")
+              ? normalizedPath
+              : normalizedPath.startsWith("/uploads/")
+              ? normalizedPath
+              : `/uploads/${normalizedPath}`,
+          position: img.position,
+        };
+      }),
       salesCount: product.salesCount ?? 0,
       ratingAverage: product.ratingAverage ?? 0,
       ratingCount: product.ratingCount ?? 0,
@@ -106,13 +135,18 @@ export async function GET(request: Request) {
   return NextResponse.json(
     products.map((p) => ({
       ...p,
-      images: p.images.map((img) => ({
-        url:
-          img.storage === "R2" || img.path.startsWith("http")
-            ? img.path
-            : `/uploads/${img.path}`,
-        position: img.position,
-      })),
+      images: p.images.map((img) => {
+        const normalizedPath = normalizeR2Url(img.path);
+        return {
+          url:
+            img.storage === "R2" || normalizedPath.startsWith("http")
+              ? normalizedPath
+              : normalizedPath.startsWith("/uploads/")
+              ? normalizedPath
+              : `/uploads/${normalizedPath}`,
+          position: img.position,
+        };
+      }),
       salesCount: p.salesCount ?? 0,
       ratingAverage: p.ratingAverage ?? 0,
       ratingCount: p.ratingCount ?? 0,
@@ -150,13 +184,12 @@ export async function POST(request: Request) {
 
       discountPercent: data.discountPercent ?? null,
       hasFreeShipping: data.hasFreeShipping ?? false,
-      couponCode: data.couponCode?.trim() ?? null,
 
       images: data.images
         ? {
             createMany: {
               data: data.images.map((img) => ({
-                path: img.url,
+                  path: normalizeR2Url(img.url),
                 storage: img.url.startsWith("http") ? "R2" : "LOCAL",
                 position: img.position,
               })),
@@ -172,13 +205,18 @@ export async function POST(request: Request) {
   return NextResponse.json(
     {
       ...created,
-      images: created.images.map((img) => ({
-        url:
-          img.storage === "R2" || img.path.startsWith("http")
-            ? img.path
-            : `/uploads/${img.path}`,
-        position: img.position,
-      })),
+      images: created.images.map((img) => {
+        const normalizedPath = normalizeR2Url(img.path);
+        return {
+          url:
+            img.storage === "R2" || normalizedPath.startsWith("http")
+              ? normalizedPath
+              : normalizedPath.startsWith("/uploads/")
+              ? normalizedPath
+              : `/uploads/${normalizedPath}`,
+          position: img.position,
+        };
+      }),
     },
     { status: 201 }
   );
@@ -201,20 +239,24 @@ export async function PUT(request: Request) {
     );
   }
 
-  const { id, images, ...data } = parsed.data;
+  const { id, images, categoryId, couponCode, ...data } = parsed.data;
+
+  if (!id) {
+    return NextResponse.json({ error: "id is required" }, { status: 400 });
+  }
 
   try {
     const updated = await prisma.product.update({
       where: { id },
       data: {
         ...data,
-
+        ...(categoryId ? { category: { connect: { id: categoryId } } } : {}),
         images: images
           ? {
               deleteMany: {},
               createMany: {
                 data: images.map((img) => ({
-                  path: img.url,
+                  path: normalizeR2Url(img.url),
                   storage: img.url.startsWith("http") ? "R2" : "LOCAL",
                   position: img.position,
                 })),
@@ -229,18 +271,31 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({
       ...updated,
-      images: updated.images.map((img) => ({
-        url:
-          img.storage === "R2" || img.path.startsWith("http")
-            ? img.path
-            : `/uploads/${img.path}`,
-        position: img.position,
-      })),
+      images: updated.images.map((img) => {
+        const normalizedPath = normalizeR2Url(img.path);
+        return {
+          url:
+            img.storage === "R2" || normalizedPath.startsWith("http")
+              ? normalizedPath
+              : normalizedPath.startsWith("/uploads/")
+              ? normalizedPath
+              : `/uploads/${normalizedPath}`,
+          position: img.position,
+        };
+      }),
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      return NextResponse.json(
+        { error: "Product not found" },
+        { status: 404 }
+      );
+    }
+
+    console.error("Erro ao atualizar produto:", error);
     return NextResponse.json(
-      { error: "Product not found" },
-      { status: 404 }
+      { error: "Erro ao atualizar produto" },
+      { status: 500 }
     );
   }
 }

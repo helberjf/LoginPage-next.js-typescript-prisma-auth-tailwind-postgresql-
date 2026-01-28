@@ -24,12 +24,26 @@ export async function GET(request: NextRequest) {
       include: {
         images: {
           orderBy: { position: "asc" },
+          select: { path: true, storage: true, position: true },
         },
       },
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json(services);
+    const servicesWithUrls = services.map((service) => ({
+      ...service,
+      images: service.images.map((img) => ({
+        url:
+          img.storage === "R2" || img.path.startsWith("http")
+            ? img.path
+            : img.path.startsWith("/uploads/")
+            ? img.path
+            : `/uploads/${img.path}`,
+        position: img.position,
+      })),
+    }));
+
+    return NextResponse.json(servicesWithUrls);
   } catch (error) {
     console.error("Erro ao listar serviços:", error);
     return NextResponse.json(
@@ -83,7 +97,8 @@ export async function POST(request: NextRequest) {
         images: {
           createMany: {
             data: imagesInput.map((img) => ({
-              url: img.url,
+              path: img.url,
+              storage: img.url.startsWith("http") ? "R2" : "LOCAL",
               position: img.position,
             })),
           },
@@ -92,11 +107,25 @@ export async function POST(request: NextRequest) {
       include: {
         images: {
           orderBy: { position: "asc" },
+          select: { path: true, storage: true, position: true },
         },
       },
     });
 
-    return NextResponse.json(service, { status: 201 });
+    const serviceWithUrls = {
+      ...service,
+      images: service.images.map((img) => ({
+        url:
+          img.storage === "R2" || img.path.startsWith("http")
+            ? img.path
+            : img.path.startsWith("/uploads/")
+            ? img.path
+            : `/uploads/${img.path}`,
+        position: img.position,
+      })),
+    };
+
+    return NextResponse.json(serviceWithUrls, { status: 201 });
   } catch (error) {
     console.error("Erro ao criar serviço:", error);
     return NextResponse.json(

@@ -7,6 +7,29 @@ import PurchaseBoxClient from "./PurchaseBoxClient";
 import ImageGallery from "./ImageGallery";
 import type { Metadata } from "next";
 
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL?.replace(/\/$/, "");
+const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME;
+
+const normalizeR2Url = (url: string) => {
+  const trimmed = url.trim();
+  if (!trimmed) return trimmed;
+
+  if (R2_PUBLIC_URL && trimmed.includes("r2.cloudflarestorage.com")) {
+    try {
+      const parsed = new URL(trimmed);
+      let path = parsed.pathname;
+      if (R2_BUCKET_NAME && path.startsWith(`/${R2_BUCKET_NAME}/`)) {
+        path = path.replace(`/${R2_BUCKET_NAME}`, "");
+      }
+      return `${R2_PUBLIC_URL}${path}`;
+    } catch {
+      return trimmed;
+    }
+  }
+
+  return trimmed;
+};
+
 type PageProps = {
   params: Promise<{ id: string }> | { id: string };
 };
@@ -34,7 +57,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       discountPercent: true,
       images: {
         where: { position: 0 },
-        select: { url: true },
+        select: { path: true, storage: true },
       },
       category: {
         select: { name: true },
@@ -53,7 +76,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       ? Math.round(product.priceCents * (1 - product.discountPercent / 100))
       : product.priceCents;
 
-  const imageUrl = product.images?.[0]?.url || "/images/placeholder/iphone17ProMax.webp";
+  const imageUrl =
+    product.images?.[0]
+      ? (() => {
+          const normalizedPath = normalizeR2Url(product.images[0].path);
+          return product.images[0].storage === "R2" || normalizedPath.startsWith("http")
+            ? normalizedPath
+            : normalizedPath.startsWith("/uploads/")
+            ? normalizedPath
+            : `/uploads/${normalizedPath}`;
+        })()
+      : "/images/placeholder/iphone17ProMax.webp";
 
   return {
     title: `${product.name} - R$ ${(finalPrice / 100).toFixed(2)}`,
@@ -84,7 +117,7 @@ export default async function ProductPage({ params }: PageProps) {
     include: {
       images: {
         orderBy: { position: "asc" },
-        select: { url: true, position: true },
+        select: { path: true, storage: true, position: true },
       },
       category: {
         select: { 
@@ -108,12 +141,25 @@ export default async function ProductPage({ params }: PageProps) {
 
   const isLogged = !!session?.user;
 
+  const normalizedImages = product.images?.map((img) => {
+    const normalizedPath = normalizeR2Url(img.path);
+    return {
+      url:
+        img.storage === "R2" || normalizedPath.startsWith("http")
+          ? normalizedPath
+          : normalizedPath.startsWith("/uploads/")
+          ? normalizedPath
+          : `/uploads/${normalizedPath}`,
+      position: img.position,
+    };
+  });
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": isServiceSchedule ? "Service" : "Product",
     "name": product.name,
     "description": product.description || "",
-    "image": product.images?.[0]?.url || "/images/placeholder/iphone17ProMax.webp",
+    "image": normalizedImages?.[0]?.url || "/images/placeholder/iphone17ProMax.webp",
     "offers": {
       "@type": "Offer",
       "price": (finalPrice / 100).toFixed(2),
@@ -166,7 +212,7 @@ export default async function ProductPage({ params }: PageProps) {
           <div className="space-y-4 lg:grid lg:grid-cols-3 lg:gap-6 lg:space-y-0">
             {/* Left: Images */}
             <aside className="lg:col-span-1">
-              <ImageGallery images={product.images || []} productName={product.name} />
+              <ImageGallery images={normalizedImages || []} productName={product.name} />
             </aside>
 
             {/* Right: Info & Purchase */}

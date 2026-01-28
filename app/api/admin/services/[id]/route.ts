@@ -17,6 +17,7 @@ export async function GET(
       include: {
         images: {
           orderBy: { position: "asc" },
+          select: { path: true, storage: true, position: true },
         },
       },
     });
@@ -28,7 +29,18 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(service);
+    return NextResponse.json({
+      ...service,
+      images: service.images.map((img) => ({
+        url:
+          img.storage === "R2" || img.path.startsWith("http")
+            ? img.path
+            : img.path.startsWith("/uploads/")
+            ? img.path
+            : `/uploads/${img.path}`,
+        position: img.position,
+      })),
+    });
   } catch (error) {
     console.error("Erro ao buscar serviço:", error);
     return NextResponse.json(
@@ -94,7 +106,8 @@ export async function PUT(
         images: {
           createMany: {
             data: images?.map((img: { url: string; position: number }) => ({
-              url: img.url,
+              path: img.url,
+              storage: img.url.startsWith("http") ? "R2" : "LOCAL",
               position: img.position,
             })) || [],
           },
@@ -103,11 +116,23 @@ export async function PUT(
       include: {
         images: {
           orderBy: { position: "asc" },
+          select: { path: true, storage: true, position: true },
         },
       },
     });
 
-    return NextResponse.json(updatedService);
+    return NextResponse.json({
+      ...updatedService,
+      images: updatedService.images.map((img) => ({
+        url:
+          img.storage === "R2" || img.path.startsWith("http")
+            ? img.path
+            : img.path.startsWith("/uploads/")
+            ? img.path
+            : `/uploads/${img.path}`,
+        position: img.position,
+      })),
+    });
   } catch (error) {
     console.error("Erro ao atualizar serviço:", error);
     return NextResponse.json(

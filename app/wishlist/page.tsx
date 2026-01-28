@@ -4,6 +4,29 @@ import prisma from "@/lib/prisma";
 import Link from "next/link";
 import ProductCard from "@/components/products/ProductCard";
 
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL?.replace(/\/$/, "");
+const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME;
+
+const normalizeR2Url = (url: string) => {
+  const trimmed = url.trim();
+  if (!trimmed) return trimmed;
+
+  if (R2_PUBLIC_URL && trimmed.includes("r2.cloudflarestorage.com")) {
+    try {
+      const parsed = new URL(trimmed);
+      let path = parsed.pathname;
+      if (R2_BUCKET_NAME && path.startsWith(`/${R2_BUCKET_NAME}/`)) {
+        path = path.replace(`/${R2_BUCKET_NAME}`, "");
+      }
+      return `${R2_PUBLIC_URL}${path}`;
+    } catch {
+      return trimmed;
+    }
+  }
+
+  return trimmed;
+};
+
 export default async function WishlistPage() {
   const session = await auth();
 
@@ -15,7 +38,7 @@ export default async function WishlistPage() {
     where: { userId: session.user.id },
     include: {
       items: {
-        orderBy: { createdAt: "desc" },
+                select: { path: true, storage: true, position: true },
         include: {
           product: {
             select: {
@@ -25,13 +48,28 @@ export default async function WishlistPage() {
               discountPercent: true,
               hasFreeShipping: true,
               salesCount: true,
-              ratingAverage: true,
+  const products =
+    wishlist?.items.map((item) => ({
+      ...item.product,
+      images: item.product.images.map((img) => {
+        const normalizedPath = normalizeR2Url(img.path);
+        return {
+          url:
+            img.storage === "R2" || normalizedPath.startsWith("http")
+              ? normalizedPath
+              : normalizedPath.startsWith("/uploads/")
+              ? normalizedPath
+              : `/uploads/${normalizedPath}`,
+          position: img.position,
+        };
+      }),
+    })) ?? [];
               ratingCount: true,
               category: {
                 select: { slug: true, name: true },
               },
               images: {
-                select: { url: true, position: true },
+                select: { path: true, storage: true, position: true },
                 orderBy: { position: "asc" },
               },
             },
@@ -41,7 +79,22 @@ export default async function WishlistPage() {
     },
   });
 
-  const products = wishlist?.items.map((item) => item.product) ?? [];
+  const products =
+    wishlist?.items.map((item) => {
+      const product = item.product;
+      return {
+        ...product,
+        images: product.images.map((img) => ({
+          url:
+            img.storage === "R2" || img.path.startsWith("http")
+              ? img.path
+              : img.path.startsWith("/uploads/")
+              ? img.path
+              : `/uploads/${img.path}`,
+          position: img.position,
+        })),
+      };
+    }) ?? [];
 
   return (
     <main className="min-h-screen bg-neutral-50 dark:bg-neutral-950 p-6">

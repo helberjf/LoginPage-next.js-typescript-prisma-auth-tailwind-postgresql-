@@ -6,7 +6,6 @@ import { Plus, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useState } from "react";
 import { toast } from "sonner";
-import { redirect } from "next/dist/server/api-utils";
 
 type Product = {
   id: string;
@@ -36,11 +35,21 @@ type ProductCardProps = {
 };
 
 const PLACEHOLDER_IMAGE = "/images/placeholder/iphone17ProMax.webp";
+const R2_PUBLIC_URL = process.env.NEXT_PUBLIC_R2_PUBLIC_URL?.replace(/\/$/, "");
 
 function normalizeImageUrl(url?: string | null) {
   if (!url) return PLACEHOLDER_IMAGE;
   const trimmed = url.trim();
   if (!trimmed) return PLACEHOLDER_IMAGE;
+  if (R2_PUBLIC_URL && trimmed.includes("r2.cloudflarestorage.com")) {
+    try {
+      const parsed = new URL(trimmed);
+      const path = parsed.pathname.replace(/^\/[^/]+/, "");
+      return `${R2_PUBLIC_URL}${path}`;
+    } catch {
+      return trimmed;
+    }
+  }
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("/")) {
     return trimmed;
   }
@@ -87,7 +96,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         action: {
           label: "Ver carrinho",
           onClick: () => {
-            redirect("/checkout");
+            router.push("/checkout");
           },
         },
       });

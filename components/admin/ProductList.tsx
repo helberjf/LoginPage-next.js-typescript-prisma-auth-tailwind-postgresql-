@@ -34,6 +34,25 @@ type Product = {
   }[];
 };
 
+const R2_PUBLIC_URL = process.env.NEXT_PUBLIC_R2_PUBLIC_URL?.replace(/\/$/, "");
+
+const normalizeR2Url = (url: string) => {
+  const trimmed = url.trim();
+  if (!trimmed) return trimmed;
+
+  if (R2_PUBLIC_URL && trimmed.includes("r2.cloudflarestorage.com")) {
+    try {
+      const parsed = new URL(trimmed);
+      const path = parsed.pathname.replace(/^\/[^/]+/, "");
+      return `${R2_PUBLIC_URL}${path}`;
+    } catch {
+      return trimmed;
+    }
+  }
+
+  return trimmed;
+};
+
 export default function ProductList() {
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
@@ -56,7 +75,18 @@ export default function ProductList() {
 
       const res = await fetch(url, { credentials: "include" });
       const data = await res.json();
-      setProducts(Array.isArray(data) ? data : []);
+      const normalized = Array.isArray(data)
+        ? data.map((p: Product) => ({
+            ...p,
+            images: Array.isArray(p.images)
+              ? p.images.map((img) => ({
+                  ...img,
+                  url: normalizeR2Url(String(img.url ?? "")),
+                }))
+              : [],
+          }))
+        : [];
+      setProducts(normalized);
     } catch (e) {
       console.error(e);
       setProducts([]);
@@ -150,8 +180,9 @@ export default function ProductList() {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {products.map(p => {
-            const mainImage =
+            const mainImageRaw =
               p.images?.find(img => img.position === 0)?.url ?? null;
+            const mainImage = mainImageRaw ? normalizeR2Url(mainImageRaw) : null;
 
             const priceCents = p.priceCents ?? 0;
 

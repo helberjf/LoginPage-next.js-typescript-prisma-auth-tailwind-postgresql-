@@ -20,6 +20,7 @@ export async function GET(
         },
         images: {
           orderBy: { position: "asc" },
+          select: { path: true, storage: true, position: true },
         },
       },
     });
@@ -31,7 +32,18 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(service);
+    return NextResponse.json({
+      ...service,
+      images: service.images.map((img) => ({
+        url:
+          img.storage === "R2" || img.path.startsWith("http")
+            ? img.path
+            : img.path.startsWith("/uploads/")
+            ? img.path
+            : `/uploads/${img.path}`,
+        position: img.position,
+      })),
+    });
   } catch (error) {
     console.error("Erro ao buscar serviço:", error);
     return NextResponse.json(

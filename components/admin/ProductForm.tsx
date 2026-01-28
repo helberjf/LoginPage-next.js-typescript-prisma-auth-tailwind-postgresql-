@@ -129,7 +129,7 @@ export default function ProductForm({ productId, onSuccess }: Props) {
       const fd = new FormData();
       fd.append("file", file);
 
-      const res = await fetch("/api/admin/uploads/product-image", {
+      const res = await fetch("/api/admin/products/uploads/product-image", {
         method: "POST",
         credentials: "include",
         body: fd,
@@ -141,7 +141,37 @@ export default function ProductForm({ productId, onSuccess }: Props) {
         throw new Error(data?.error ?? "Falha no upload.");
       }
 
-      const url = data?.url as string;
+      if (data?.mode === "r2" && Array.isArray(data.uploads) && data.uploads[0]) {
+        const upload = data.uploads[0] as { uploadUrl: string; publicUrl: string };
+        const uploadRes = await fetch(upload.uploadUrl, {
+          method: "PUT",
+          body: file,
+          headers: {
+            "Content-Type": file.type,
+          },
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error("Falha ao enviar para o storage.");
+        }
+
+        const url = upload.publicUrl as string;
+
+        setImages((prev) => {
+          if (prev.some((p) => p.url === url)) return prev;
+
+          const next = [...prev, { url, position: prev.length }];
+          return next.map((img, i) => ({ ...img, position: i }));
+        });
+
+        return;
+      }
+
+      const url = (data?.url as string) ?? (Array.isArray(data?.urls) ? data.urls[0] : "");
+
+      if (!url) {
+        throw new Error("URL de upload inválida.");
+      }
 
       setImages((prev) => {
         // evita duplicada
@@ -157,9 +187,18 @@ export default function ProductForm({ productId, onSuccess }: Props) {
     }
   };
 
+  const normalizeImageUrl = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return "";
+    if (trimmed.startsWith("/") || trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+      return trimmed;
+    }
+    return `https://${trimmed}`;
+  };
+
   /* ===== Add URL ===== */
   const addImageByUrl = () => {
-    const url = urlInput.trim();
+    const url = normalizeImageUrl(urlInput);
     if (!url) return;
 
     setImages((prev) => {
@@ -207,6 +246,13 @@ export default function ProductForm({ productId, onSuccess }: Props) {
 
     setSaving(true);
 
+    const normalizedUrlInput = normalizeImageUrl(urlInput);
+    const mergedImages = normalizedUrlInput
+      ? images.some((img) => img.url === normalizedUrlInput)
+        ? images
+        : [...images, { url: normalizedUrlInput, position: images.length }]
+      : images;
+
     const payload = {
       id: productId,
       name: name.trim(),
@@ -218,7 +264,9 @@ export default function ProductForm({ productId, onSuccess }: Props) {
       discountPercent: discountPercent.trim() ? parseInt(discountPercent, 10) : null,
       hasFreeShipping,
       couponCode: couponCode.trim() ? couponCode.trim().toUpperCase() : null,
-      images: images.map((img, i) => ({ url: img.url, position: i })),
+      images: mergedImages
+        .map((img, i) => ({ url: normalizeImageUrl(img.url), position: i }))
+        .filter((img) => img.url),
     };
 
     try {

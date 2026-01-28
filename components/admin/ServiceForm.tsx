@@ -109,7 +109,7 @@ export default function ServiceForm({ serviceId, onSuccess }: Props) {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch("/api/upload/services", {
+      const res = await fetch("/api/admin/services/uploads/service-image", {
         method: "POST",
         body: formData,
         credentials: "include",
@@ -121,8 +121,36 @@ export default function ServiceForm({ serviceId, onSuccess }: Props) {
       }
 
       const data = await res.json();
+
+      if (data?.mode === "r2" && Array.isArray(data.uploads) && data.uploads[0]) {
+        const upload = data.uploads[0] as { uploadUrl: string; publicUrl: string };
+        const uploadRes = await fetch(upload.uploadUrl, {
+          method: "PUT",
+          body: file,
+          headers: {
+            "Content-Type": file.type,
+          },
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error("Falha ao enviar para o storage.");
+        }
+
+        const newImage: ServiceImageInput = {
+          url: upload.publicUrl,
+          position: images.length,
+        };
+        setImages([...images, newImage]);
+        return;
+      }
+
+      const url = (data?.url as string) ?? (Array.isArray(data?.urls) ? data.urls[0] : "");
+      if (!url) {
+        throw new Error("URL de upload inválida.");
+      }
+
       const newImage: ServiceImageInput = {
-        url: data.url,
+        url,
         position: images.length,
       };
       setImages([...images, newImage]);

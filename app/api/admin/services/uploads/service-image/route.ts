@@ -1,4 +1,4 @@
-// app/api/admin/products/uploads/product-image/route.ts
+// app/api/admin/services/uploads/service-image/route.ts
 import { NextResponse } from "next/server";
 import path from "path";
 import fs from "fs/promises";
@@ -14,7 +14,7 @@ const MAX_SIZE = 3 * 1024 * 1024;
 const allowed = ["image/png", "image/jpeg", "image/webp"];
 
 const USE_R2 = process.env.USE_R2 === "true";
-const R2_PUBLIC_URL = (process.env.R2_PUBLIC_URL ?? process.env.NEXT_PUBLIC_R2_PUBLIC_URL)?.replace(/\/$/, "");
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL?.replace(/\/$/, "");
 const R2_DIRECT_UPLOAD = process.env.R2_DIRECT_UPLOAD === "true";
 
 const r2 = USE_R2
@@ -57,7 +57,6 @@ export async function POST(req: Request) {
 
     const { yyyy, mm } = getFolderByDate();
 
-    // 🔴 MODO R2
     if (USE_R2 && r2) {
       const uploads = await Promise.all(
         files.map(async (file) => {
@@ -80,7 +79,7 @@ export async function POST(req: Request) {
             .randomBytes(8)
             .toString("hex")}.${ext}`;
 
-          const key = `products/${yyyy}/${mm}/${filename}`;
+          const key = `services/${yyyy}/${mm}/${filename}`;
 
           const publicUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${key}` : key;
 
@@ -126,12 +125,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ mode: "r2", uploads });
     }
 
-    // 🟢 MODO LOCAL / VPS
     const uploadDir = path.join(
       process.cwd(),
       "public",
       "uploads",
-      "products",
+      "services",
       yyyy,
       mm
     );
@@ -170,7 +168,7 @@ export async function POST(req: Request) {
       const filepath = path.join(uploadDir, filename);
       await fs.writeFile(filepath, buffer);
 
-      urls.push(`/uploads/products/${yyyy}/${mm}/${filename}`);
+      urls.push(`/uploads/services/${yyyy}/${mm}/${filename}`);
     }
 
     return urls.length === 1

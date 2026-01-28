@@ -15,12 +15,26 @@ export async function GET() {
         },
         images: {
           orderBy: { position: "asc" },
+          select: { path: true, storage: true, position: true },
         },
       },
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json(services);
+    const servicesWithUrls = services.map((service) => ({
+      ...service,
+      images: service.images.map((img) => ({
+        url:
+          img.storage === "R2" || img.path.startsWith("http")
+            ? img.path
+            : img.path.startsWith("/uploads/")
+            ? img.path
+            : `/uploads/${img.path}`,
+        position: img.position,
+      })),
+    }));
+
+    return NextResponse.json(servicesWithUrls);
   } catch (error) {
     console.error("Erro ao buscar serviços:", error);
     return NextResponse.json(
