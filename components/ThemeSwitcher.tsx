@@ -16,7 +16,7 @@ export default function ThemeSwitcher() {
     return (
       <button
         type="button"
-        className="px-3 py-2 rounded-md border border-neutral-300 dark:border-neutral-700 text-sm opacity-50"
+        className="px-2 py-1 rounded-md border border-neutral-300 dark:border-neutral-700 text-xs opacity-50"
         style={{ pointerEvents: "none" }}
       >
         ...
@@ -30,7 +30,7 @@ export default function ThemeSwitcher() {
     <button
       type="button"
       onClick={() => setTheme(nextTheme)}
-      className="px-3 py-2 rounded-md border border-neutral-300 dark:border-neutral-700 text-sm"
+      className="px-2 py-1 rounded-md border border-neutral-300 dark:border-neutral-700 text-xs"
     >
       {theme === "dark" ? "☀️ Modo claro" : "🌙 Modo escuro"}
     </button>

@@ -28,7 +28,7 @@ const IMAGES = {
   // Peças e Componentes - IDs verificados
   tela: [
     "1616401776278-2f9a6c3f3e8a", // Tela smartphone
-    "1585060544812-6b45742d762f", // Display repair
+    "1585060544812-ae8725290836", // Display repair
   ],
   bateria: [
     "1601524909162-ae8725290836", // Bateria iPhone
@@ -80,11 +80,14 @@ async function main() {
   console.log("=".repeat(70) + "\n");
 
   // =========================================================
-  // 1) LIMPEZA SEGURA (Idempotência)
+  // 1) LIMPEZA SEGURA (Idempotência) - ORDEM CORRETA
   // =========================================================
   console.log("🧹 Limpando dados antigos do seed...");
 
   // Limpar na ordem correta (respeitando foreign keys)
+  await prisma.serviceReview.deleteMany({});
+  await prisma.productReview.deleteMany({});
+  await prisma.notification.deleteMany({});
   await prisma.serviceImage.deleteMany({});
   await prisma.productImage.deleteMany({});
   await prisma.schedule.deleteMany({});
@@ -93,9 +96,16 @@ async function main() {
   await prisma.order.deleteMany({});
   await prisma.service.deleteMany({});
   await prisma.serviceCategory.deleteMany({});
+  await prisma.couponProduct.deleteMany({});
+  await prisma.coupon.deleteMany({});
+  await prisma.cartItem.deleteMany({});
+  await prisma.cart.deleteMany({});
+  await prisma.wishlistItem.deleteMany({});
+  await prisma.wishlist.deleteMany({});
   await prisma.product.deleteMany({});
   await prisma.category.deleteMany({});
   await prisma.employeeAvailability.deleteMany({});
+  await prisma.userEvent.deleteMany({});
   
   console.log("✅ Limpeza concluída\n");
 
@@ -320,7 +330,7 @@ async function main() {
       images: [getImage("iphone14", 0), getImage("iphone14", 1)],
     },
     {
-      name: "iPhone 13 128GB Rosa",
+      name: "iPhone 13 128GB Grafite",
       description: "iPhone 13 com processador A15, dual SIM e 5G. Resistente à água IP68",
       priceCents: 389900,
       stock: 12,
@@ -330,7 +340,6 @@ async function main() {
       ratingCount: 203,
       discountPercent: 5,
       hasFreeShipping: true,
-      couponCode: "IPHONE5",
       images: [getImage("iphone13", 0), getImage("iphone13", 1)],
     },
     {
@@ -344,7 +353,6 @@ async function main() {
       ratingCount: 145,
       discountPercent: 10,
       hasFreeShipping: true,
-      couponCode: "IPHONE10",
       images: [getImage("iphone12", 0), getImage("iphone12", 1)],
     },
 
@@ -447,7 +455,7 @@ async function main() {
     },
   ];
 
-  // CORREÇÃO: Armazenar produtos criados com seus IDs
+  // Armazenar produtos criados com seus IDs
   const createdProductsMap = new Map<string, string>();
 
   for (const productData of productsData) {
@@ -468,7 +476,8 @@ async function main() {
       await prisma.productImage.create({
         data: {
           productId: product.id,
-          url: images[i],
+           path: images[i],   // URL externa (Unsplash)
+           storage: "R2",     // tratado como externo/CDN
           position: i,
         },
       });
@@ -558,7 +567,7 @@ async function main() {
     },
   ];
 
-  // CORREÇÃO: Armazenar serviços criados com seus IDs
+  // Armazenar serviços criados com seus IDs
   const createdServicesMap = new Map<string, string>();
 
   for (const serviceData of servicesData) {
@@ -579,7 +588,8 @@ async function main() {
       await prisma.serviceImage.create({
         data: {
           serviceId: service.id,
-          url: images[i],
+          path: images[i],   // URL externa
+          storage: "R2",
           position: i,
         },
       });
@@ -589,148 +599,161 @@ async function main() {
   console.log(`✅ ${createdServicesMap.size} serviços criados com imagens\n`);
 
   // =========================================================
-  // 8) AGENDAMENTOS (Demonstrando Conflitos)
+  // 7.5) BUSCAR SERVIÇOS DO BANCO (ANTES DE USAR)
   // =========================================================
-  console.log("⏳ Preparando agendamentos e pedidos...\n");
-  console.log("📅 Criando agendamentos (demonstrando conflitos)...\n");
-
-  // Buscar IDs dos serviços
   const trocaTelaId = createdServicesMap.get("Troca de Tela iPhone")!;
   const trocaBateriaId = createdServicesMap.get("Troca de Bateria iPhone")!;
   const limpezaId = createdServicesMap.get("Limpeza Completa iPhone")!;
 
-  // Buscar serviços completos do banco
   const [trocaTela, trocaBateria, limpeza] = await Promise.all([
     prisma.service.findUnique({ where: { id: trocaTelaId } }),
     prisma.service.findUnique({ where: { id: trocaBateriaId } }),
     prisma.service.findUnique({ where: { id: limpezaId } }),
   ]);
 
-  // Data base: próxima segunda-feira às 10:00
+  // =========================================================
+  // 8) AGENDAMENTOS + PEDIDOS DE SERVIÇOS
+  // =========================================================
+  console.log("📅 Criando agendamentos com pedidos...\n");
+
   const nextMonday = new Date();
   nextMonday.setDate(nextMonday.getDate() + ((1 + 7 - nextMonday.getDay()) % 7 || 7));
   nextMonday.setHours(10, 0, 0, 0);
 
-  // AGENDAMENTO 1: Cliente 1 com Lucas - CONFIRMADO
+  // AGENDAMENTO 1
   const schedule1Start = new Date(nextMonday);
   const schedule1End = new Date(schedule1Start);
   schedule1End.setMinutes(schedule1End.getMinutes() + trocaTela!.durationMins);
 
-  await prisma.schedule.create({
+  await prisma.order.create({
     data: {
       userId: customer1.id,
-      employeeId: tech1.id,
-      serviceId: trocaTela!.id,
       type: "SERVICE",
-      status: "CONFIRMED",
-      startAt: schedule1Start,
-      endAt: schedule1End,
-      notes: "Tela quebrada após queda. Cliente solicitou peça original.",
-      paymentStatus: "PAID",
-      createdByUserId: admin.id,
-      createdByRole: "ADMIN",
-    },
-  });
-
-  console.log(`✅ Agendamento 1: ${trocaTela!.name}`);
-  console.log(`   Cliente: ${customer1.name}`);
-  console.log(`   Técnico: ${tech1.name}`);
-  console.log(`   Horário: ${schedule1Start.toLocaleString("pt-BR")} - ${schedule1End.toLocaleTimeString("pt-BR")}`);
-  console.log(`   Status: CONFIRMED ✓\n`);
-
-  // DEMONSTRAÇÃO DE CONFLITO
-  console.log("⚠️  DEMONSTRAÇÃO DE CONFLITO:");
-  console.log(`   Tentando agendar ${limpeza!.name} com ${tech1.name}`);
-  console.log(`   No mesmo horário: ${schedule1Start.toLocaleString("pt-BR")}`);
-  
-  const conflictCheck = await prisma.schedule.findFirst({
-    where: {
-      employeeId: tech1.id,
-      status: { in: ["PENDING", "CONFIRMED"] },
-      OR: [
-        {
-          AND: [
-            { startAt: { lte: schedule1Start } },
-            { endAt: { gt: schedule1Start } },
-          ],
+      status: "PAID",
+      totalCents: trocaTela!.priceCents || 0,
+      currency: "BRL",
+      payments: {
+        create: {
+          method: "PIX",
+          status: "PAID",
+          amountCents: trocaTela!.priceCents || 0,
         },
-      ],
+      },
+      schedules: {
+        create: {
+          userId: customer1.id,
+          employeeId: tech1.id,
+          serviceId: trocaTela!.id,
+          type: "SERVICE",
+          status: "CONFIRMED",
+          startAt: schedule1Start,
+          endAt: schedule1End,
+          notes: "Tela quebrada após queda.",
+          createdByUserId: admin.id,
+          createdByRole: "ADMIN",
+        },
+      },
+    },
+    include: {
+      schedules: true,
+      payments: true,
     },
   });
 
-  if (conflictCheck) {
-    console.log(`   ❌ CONFLITO DETECTADO!`);
-    console.log(`   Já existe agendamento: ${conflictCheck.id}`);
-    console.log(`   ℹ️  Sistema impede agendamento duplicado!\n`);
-  }
+  console.log(`✅ Pedido Serviço 1: ${customer1.name} - ${trocaTela!.name}\n`);
 
-  // AGENDAMENTO 2: Cliente 1 com Lucas - HORÁRIO DIFERENTE
+  // AGENDAMENTO 2
   const schedule2Start = new Date(nextMonday);
   schedule2Start.setHours(14, 0);
   const schedule2End = new Date(schedule2Start);
   schedule2End.setMinutes(schedule2End.getMinutes() + trocaBateria!.durationMins);
 
-  await prisma.schedule.create({
+  await prisma.order.create({
     data: {
       userId: customer1.id,
-      employeeId: tech1.id,
-      serviceId: trocaBateria!.id,
       type: "SERVICE",
-      status: "CONFIRMED",
-      startAt: schedule2Start,
-      endAt: schedule2End,
-      notes: "Bateria com saúde abaixo de 80%",
-      paymentStatus: "PAID",
-      createdByUserId: customer1.id,
-      createdByRole: "CUSTOMER",
+      status: "PAID",
+      totalCents: trocaBateria!.priceCents || 0,
+      currency: "BRL",
+      payments: {
+        create: {
+          method: "CREDIT_CARD",
+          status: "PAID",
+          amountCents: trocaBateria!.priceCents || 0,
+        },
+      },
+      schedules: {
+        create: {
+          userId: customer1.id,
+          employeeId: tech1.id,
+          serviceId: trocaBateria!.id,
+          type: "SERVICE",
+          status: "CONFIRMED",
+          startAt: schedule2Start,
+          endAt: schedule2End,
+          notes: "Bateria com saúde abaixo de 80%",
+          createdByUserId: customer1.id,
+          createdByRole: "CUSTOMER",
+        },
+      },
     },
   });
 
-  console.log(`✅ Agendamento 2: ${trocaBateria!.name}`);
-  console.log(`   Mesmo técnico (${tech1.name}), horário diferente`);
-  console.log(`   Status: CONFIRMED ✓\n`);
+  console.log(`✅ Pedido Serviço 2: ${customer1.name} - ${trocaBateria!.name}\n`);
 
-  // AGENDAMENTO 3: Visitante com Fernanda - MESMO HORÁRIO
+  // AGENDAMENTO 3
   const schedule3Start = new Date(schedule1Start);
   const schedule3End = new Date(schedule3Start);
   schedule3End.setMinutes(schedule3End.getMinutes() + limpeza!.durationMins);
 
-  await prisma.schedule.create({
+  await prisma.order.create({
     data: {
-      guestName: "Pedro Oliveira",
+      guestFullName: "Pedro Oliveira",
       guestEmail: "pedro@example.com",
+      guestCpf: "12345678900",
       guestPhone: "+5511955554444",
-      employeeId: tech2.id,
-      serviceId: limpeza!.id,
       type: "SERVICE",
       status: "PENDING",
-      startAt: schedule3Start,
-      endAt: schedule3End,
-      notes: "iPhone com oxidação na placa",
-      paymentStatus: "PENDING",
-      createdByUserId: admin.id,
-      createdByRole: "ADMIN",
+      totalCents: limpeza!.priceCents || 0,
+      currency: "BRL",
+      payments: {
+        create: {
+          method: "PIX",
+          status: "PENDING",
+          amountCents: limpeza!.priceCents || 0,
+        },
+      },
+      schedules: {
+        create: {
+          guestName: "Pedro Oliveira",
+          guestEmail: "pedro@example.com",
+          guestPhone: "+5511955554444",
+          employeeId: tech2.id,
+          serviceId: limpeza!.id,
+          type: "SERVICE",
+          status: "PENDING",
+          startAt: schedule3Start,
+          endAt: schedule3End,
+          notes: "iPhone com oxidação",
+          createdByUserId: admin.id,
+          createdByRole: "ADMIN",
+        },
+      },
     },
   });
 
-  console.log(`✅ Agendamento 3: ${limpeza!.name}`);
-  console.log(`   Visitante: Pedro Oliveira`);
-  console.log(`   Técnico: ${tech2.name} (técnico diferente)`);
-  console.log(`   Mesmo horário do Agendamento 1 - SEM CONFLITO ✓`);
-  console.log(`   Status: PENDING (aguardando confirmação)\n`);
+  console.log(`✅ Pedido Serviço 3: Pedro (Guest) - ${limpeza!.name}\n`);
 
   // =========================================================
-  // 9) PEDIDOS COM PRODUTOS
+  // 9) PEDIDOS DE PRODUTOS
   // =========================================================
   console.log("🛒 Criando pedidos de produtos...\n");
 
-  // Buscar IDs dos produtos
   const iphone14Id = createdProductsMap.get("iPhone 14 128GB Azul")!;
   const caboId = createdProductsMap.get("Cabo Lightning Apple Original 1m")!;
   const airpodsProId = createdProductsMap.get("AirPods Pro 2")!;
   const carregadorId = createdProductsMap.get("Carregador Apple USB-C 20W")!;
 
-  // Buscar produtos completos
   const [iphone14, cabo, airpodsPro, carregador] = await Promise.all([
     prisma.product.findUnique({ where: { id: iphone14Id } }),
     prisma.product.findUnique({ where: { id: caboId } }),
@@ -738,25 +761,17 @@ async function main() {
     prisma.product.findUnique({ where: { id: carregadorId } }),
   ]);
 
-  // PEDIDO 1: Cliente 1 - iPhone 14 + Cabo (PAGO)
-  const order1 = await prisma.order.create({
+  const productOrder1 = await prisma.order.create({
     data: {
       userId: customer1.id,
+      type: "PRODUCT",
       status: "PAID",
       totalCents: iphone14!.priceCents + (cabo!.priceCents * 2),
       currency: "BRL",
       items: {
         create: [
-          {
-            productId: iphone14!.id,
-            quantity: 1,
-            priceCents: iphone14!.priceCents,
-          },
-          {
-            productId: cabo!.id,
-            quantity: 2,
-            priceCents: cabo!.priceCents,
-          },
+          { productId: iphone14!.id, quantity: 1, priceCents: iphone14!.priceCents },
+          { productId: cabo!.id, quantity: 2, priceCents: cabo!.priceCents },
         ],
       },
       payments: {
@@ -773,89 +788,107 @@ async function main() {
     },
   });
 
-  console.log(`✅ Pedido 1: ${customer1.name}`);
-  console.log(`   Produtos: ${order1.items.map(i => `${i.product.name} (${i.quantity}x)`).join(", ")}`);
-  console.log(`   Total: R$ ${(order1.totalCents / 100).toFixed(2)}`);
-  console.log(`   Pagamento: ${order1.payments[0].method} - ${order1.payments[0].status}\n`);
+  console.log(`✅ Pedido Produto 1: ${customer1.name}\n`);
 
-  // PEDIDO 2: Cliente 2 - AirPods Pro (PENDENTE)
-  const order2 = await prisma.order.create({
+  const productOrder2 = await prisma.order.create({
     data: {
       userId: customer2.id,
+      type: "PRODUCT",
       status: "PENDING",
       totalCents: airpodsPro!.priceCents,
       currency: "BRL",
       items: {
-        create: {
-          productId: airpodsPro!.id,
-          quantity: 1,
-          priceCents: airpodsPro!.priceCents,
-        },
+        create: { productId: airpodsPro!.id, quantity: 1, priceCents: airpodsPro!.priceCents },
       },
       payments: {
-        create: {
-          method: "CREDIT_CARD",
-          status: "PENDING",
-          amountCents: airpodsPro!.priceCents,
-        },
+        create: { method: "CREDIT_CARD", status: "PENDING", amountCents: airpodsPro!.priceCents },
       },
-    },
-    include: {
-      items: { include: { product: true } },
-      payments: true,
     },
   });
 
-  console.log(`✅ Pedido 2: ${customer2.name}`);
-  console.log(`   Produto: ${order2.items[0].product.name}`);
-  console.log(`   Total: R$ ${(order2.totalCents / 100).toFixed(2)}`);
-  console.log(`   Status: ${order2.status} (aguardando pagamento)\n`);
+  console.log(`✅ Pedido Produto 2: ${customer2.name}\n`);
 
-  // PEDIDO 3: Visitante (Guest) - Cabo + Carregador
-  const order3 = await prisma.order.create({
+  const productOrder3 = await prisma.order.create({
     data: {
       guestFullName: "Ana Paula Souza",
       guestEmail: "ana@example.com",
       guestCpf: "55566677788",
       guestPhone: "+5511944443333",
+      type: "PRODUCT",
       status: "PAID",
       totalCents: cabo!.priceCents + carregador!.priceCents,
       currency: "BRL",
       items: {
         create: [
-          {
-            productId: cabo!.id,
-            quantity: 1,
-            priceCents: cabo!.priceCents,
-          },
-          {
-            productId: carregador!.id,
-            quantity: 1,
-            priceCents: carregador!.priceCents,
-          },
+          { productId: cabo!.id, quantity: 1, priceCents: cabo!.priceCents },
+          { productId: carregador!.id, quantity: 1, priceCents: carregador!.priceCents },
         ],
+      },
+      payments: {
+        create: { method: "PIX", status: "PAID", amountCents: cabo!.priceCents + carregador!.priceCents },
+      },
+    },
+  });
+
+  console.log(`✅ Pedido Produto 3: Ana (Guest)\n`);
+
+  // =========================================================
+  // 10) PEDIDO MISTO
+  // =========================================================
+  console.log("🎁 Criando pedido misto...\n");
+
+  const configuracaoId = createdServicesMap.get("Configuração de iPhone Novo")!;
+  const configuracao = await prisma.service.findUnique({ where: { id: configuracaoId } });
+
+  const capaProductId = createdProductsMap.get("Capa de Silicone iPhone 13")!;
+  const capa = await prisma.product.findUnique({ where: { id: capaProductId } });
+
+  const mixedScheduleStart = new Date(nextMonday);
+  mixedScheduleStart.setDate(mixedScheduleStart.getDate() + 2);
+  mixedScheduleStart.setHours(15, 0);
+  const mixedScheduleEnd = new Date(mixedScheduleStart);
+  mixedScheduleEnd.setMinutes(mixedScheduleEnd.getMinutes() + configuracao!.durationMins);
+
+  await prisma.order.create({
+    data: {
+      userId: customer2.id,
+      type: "MIXED",
+      status: "PAID",
+      totalCents: capa!.priceCents + (configuracao!.priceCents || 0),
+      currency: "BRL",
+      items: {
+        create: { productId: capa!.id, quantity: 1, priceCents: capa!.priceCents },
+      },
+      schedules: {
+        create: {
+          userId: customer2.id,
+          employeeId: tech1.id,
+          serviceId: configuracao!.id,
+          type: "SERVICE",
+          status: "CONFIRMED",
+          startAt: mixedScheduleStart,
+          endAt: mixedScheduleEnd,
+          notes: "Configuração + capa",
+          createdByUserId: customer2.id,
+          createdByRole: "CUSTOMER",
+        },
       },
       payments: {
         create: {
           method: "PIX",
           status: "PAID",
-          amountCents: cabo!.priceCents + carregador!.priceCents,
+          amountCents: capa!.priceCents + (configuracao!.priceCents || 0),
         },
       },
     },
-    include: {
-      items: { include: { product: true } },
-    },
   });
 
-  console.log(`✅ Pedido 3: Ana Paula Souza (Visitante)`);
-  console.log(`   Produtos: ${order3.items.map(i => i.product.name).join(", ")}`);
-  console.log(`   Total: R$ ${(order3.totalCents / 100).toFixed(2)}\n`);
+  console.log(`✅ Pedido Misto: ${customer2.name}\n`);
 
   // =========================================================
-  // 10) CUPONS DE DESCONTO
+  // 11) CUPONS
   // =========================================================
-  console.log("🎫 Criando cupons de desconto...\n");
+  console.log("🎫 Criando cupons...\n");
 
   const now = new Date();
   const futureDate = new Date();
@@ -865,11 +898,11 @@ async function main() {
     data: [
       {
         code: "BEMVINDO10",
-        description: "10% de desconto para novos clientes",
+        description: "10% para novos clientes",
         discountType: "PERCENTAGE",
         discountValue: 10,
-        minPurchase: 10000, // R$ 100
-        maxDiscount: 5000,   // R$ 50
+        minPurchase: 10000,
+        maxDiscount: 5000,
         usageLimit: 100,
         perUserLimit: 1,
         validFrom: now,
@@ -877,20 +910,8 @@ async function main() {
         active: true,
       },
       {
-        code: "FRETEGRATIS",
-        description: "Frete grátis acima de R$ 200",
-        discountType: "FIXED_AMOUNT",
-        discountValue: 0,
-        minPurchase: 20000,
-        usageLimit: null,
-        perUserLimit: null,
-        validFrom: now,
-        validUntil: futureDate,
-        active: true,
-      },
-      {
         code: "BLACKFRIDAY50",
-        description: "R$ 50 de desconto - Black Friday",
+        description: "R$ 50 de desconto",
         discountType: "FIXED_AMOUNT",
         discountValue: 5000,
         minPurchase: 30000,
@@ -903,113 +924,58 @@ async function main() {
     ],
   });
 
-  const coupons = await prisma.coupon.findMany();
-  console.log(`✅ ${coupons.length} cupons criados:`);
-  coupons.forEach(c => {
-    const discount = c.discountType === "PERCENTAGE" 
-      ? `${c.discountValue}%` 
-      : `R$ ${(c.discountValue / 100).toFixed(2)}`;
-    console.log(`   • ${c.code}: ${discount} - ${c.description}`);
-  });
-  console.log();
+  console.log(`✅ Cupons criados\n`);
 
-  // =========================================================
-  // 11) REVIEWS DE PRODUTOS
-  // =========================================================
-  console.log("⭐ Criando avaliações de produtos...\n");
-
-  const iphone13Id = createdProductsMap.get("iPhone 13 128GB Rosa")!;
-  const bateriaId = createdProductsMap.get("Bateria iPhone 13 Original")!;
-
-  await prisma.productReview.createMany({
-    data: [
-      {
-        productId: iphone14!.id,
-        userId: customer1.id,
-        rating: 5,
-        comment: "Excelente! iPhone chegou perfeito, bem embalado. Muito satisfeito com a compra.",
-        verified: true,
-      },
-      {
-        productId: iphone14!.id,
-        guestName: "Carlos Eduardo",
-        guestEmail: "carlos@example.com",
-        rating: 4,
-        comment: "Bom produto, mas o preço poderia ser melhor.",
-        verified: false,
-      },
-      {
-        productId: iphone13Id,
-        userId: customer2.id,
-        rating: 5,
-        comment: "Perfeito! A cor rosa é linda e o desempenho é excelente.",
-        verified: true,
-      },
-      {
-        productId: bateriaId,
-        guestName: "Roberto Lima",
-        guestEmail: "roberto@example.com",
-        rating: 5,
-        comment: "Bateria original, instalação rápida. Voltou a 100% de saúde!",
-        verified: true,
-      },
-      {
-        productId: cabo!.id,
-        userId: customer1.id,
-        rating: 4,
-        comment: "Cabo bom, mas um pouco caro. Qualidade Apple.",
-        verified: true,
-      },
-    ],
+  // Associar cupom BEMVINDO10 ao iPhone 13
+  const cupomBemVindo = await prisma.coupon.findUnique({
+    where: { code: "BEMVINDO10" },
   });
 
-  // Atualizar ratings dos produtos
-  const reviewStats = await prisma.productReview.groupBy({
-    by: ['productId'],
-    _avg: { rating: true },
-    _count: { rating: true },
-  });
-
-  for (const stat of reviewStats) {
-    await prisma.product.update({
-      where: { id: stat.productId },
+  const iphone13ProductId = createdProductsMap.get("iPhone 13 128GB Grafite")!;
+  
+  if (cupomBemVindo) {
+    await prisma.couponProduct.create({
       data: {
-        ratingAverage: stat._avg.rating || 0,
-        ratingCount: stat._count.rating,
+        couponId: cupomBemVindo.id,
+        productId: iphone13ProductId,
       },
     });
   }
 
-  console.log(`✅ ${reviewStats.length} produtos com avaliações atualizadas\n`);
+  // =========================================================
+  // 12) REVIEWS
+  // =========================================================
+  console.log("⭐ Criando reviews...\n");
+
+  const bateriaId = createdProductsMap.get("Bateria iPhone 13 Original")!;
+
+  await prisma.productReview.createMany({
+    data: [
+      { productId: iphone14!.id, userId: customer1.id, rating: 5, comment: "Excelente!", verified: true },
+      { productId: iphone13ProductId, userId: customer2.id, rating: 5, comment: "Perfeito!", verified: true },
+      { productId: bateriaId, guestName: "Roberto", guestEmail: "roberto@example.com", rating: 5, comment: "Ótimo!", verified: true },
+    ],
+  });
+
+  console.log(`✅ Reviews criadas\n`);
 
   // =========================================================
-  // 12) CARRINHO E WISHLIST
+  // 13) CARRINHO E WISHLIST
   // =========================================================
-  console.log("🛒 Criando carrinhos e wishlists...\n");
+  console.log("🛒 Criando carrinhos...\n");
 
-  const capaId = createdProductsMap.get("Capa de Silicone iPhone 13")!;
-  
   await prisma.cart.create({
     data: {
       userId: customer2.id,
       items: {
         create: [
-          {
-            productId: cabo!.id,
-            quantity: 1,
-          },
-          {
-            productId: capaId,
-            quantity: 2,
-          },
+          { productId: cabo!.id, quantity: 1 },
+          { productId: capaProductId, quantity: 2 },
         ],
       },
     },
   });
 
-  console.log(`✅ Carrinho criado para ${customer2.name} (2 itens)`);
-
-  // Wishlist do Cliente 1
   const iphone12Id = createdProductsMap.get("iPhone 12 64GB Roxo")!;
   const airpods2Id = createdProductsMap.get("AirPods 2ª Geração")!;
 
@@ -1025,10 +991,10 @@ async function main() {
     },
   });
 
-  console.log(`✅ Wishlist criada para ${customer1.name} (2 produtos)\n`);
+  console.log(`✅ Carrinho e wishlist criados\n`);
 
   // =========================================================
-  // 13) NOTIFICAÇÕES
+  // 14) NOTIFICAÇÕES
   // =========================================================
   console.log("🔔 Criando notificações...\n");
 
@@ -1036,126 +1002,78 @@ async function main() {
     data: [
       {
         userId: customer1.id,
-        orderId: order1.id,
+        orderId: productOrder1.id,
         type: "ORDER_CONFIRMED",
         title: "Pedido Confirmado",
-        message: `Seu pedido #${order1.id.slice(0, 8)} foi confirmado e está sendo preparado.`,
+        message: `Pedido #${productOrder1.id.slice(0, 8)} confirmado`,
         sentAt: new Date(),
       },
       {
         userId: customer1.id,
         type: "SCHEDULE_CONFIRMED",
         title: "Agendamento Confirmado",
-        message: `Seu agendamento de ${trocaTela!.name} está confirmado para ${schedule1Start.toLocaleDateString("pt-BR")}.`,
+        message: `Agendamento para ${schedule1Start.toLocaleDateString("pt-BR")}`,
         read: true,
         sentAt: new Date(),
       },
       {
         userId: customer2.id,
-        orderId: order2.id,
+        orderId: productOrder2.id,
         type: "PAYMENT_RECEIVED",
         title: "Aguardando Pagamento",
-        message: "Estamos aguardando a confirmação do seu pagamento.",
+        message: "Aguardando confirmação",
       },
     ],
   });
 
-  console.log(`✅ 3 notificações criadas\n`);
+  console.log(`✅ Notificações criadas\n`);
 
   // =========================================================
-  // 14) EVENTOS DE USUÁRIO
+  // 15) EVENTOS
   // =========================================================
-  console.log("📊 Registrando eventos de usuário...\n");
+  console.log("📊 Registrando eventos...\n");
 
   await prisma.userEvent.createMany({
     data: [
-      {
-        userId: customer1.id,
-        event: "PRODUCT_VIEW",
-        metadata: { productId: iphone14!.id, category: "iphones" },
-      },
-      {
-        userId: customer1.id,
-        event: "ORDER_PLACED",
-        metadata: { orderId: order1.id, totalCents: order1.totalCents },
-      },
-      {
-        userId: customer2.id,
-        event: "CART_ADD",
-        metadata: { productId: cabo!.id },
-      },
-      {
-        event: "GUEST_ORDER",
-        metadata: { 
-          guestEmail: "ana@example.com", 
-          orderId: order3.id 
-        },
-      },
+      { userId: customer1.id, event: "PRODUCT_VIEW", metadata: { productId: iphone14!.id } },
+      { userId: customer1.id, event: "ORDER_PLACED", metadata: { orderId: productOrder1.id } },
+      { event: "GUEST_ORDER", metadata: { guestEmail: "ana@example.com", orderId: productOrder3.id } },
     ],
   });
 
-  console.log(`✅ 4 eventos registrados\n`);
+  console.log(`✅ Eventos registrados\n`);
 
   // =========================================================
   // RESUMO FINAL
   // =========================================================
   console.log("\n" + "=".repeat(70));
-  console.log("✨ SEED CONCLUÍDO COM SUCESSO!");
+  console.log("✨ SEED CONCLUÍDO!");
   console.log("=".repeat(70) + "\n");
 
   const stats = {
     users: await prisma.user.count(),
-    categories: await prisma.category.count(),
     products: await prisma.product.count(),
     services: await prisma.service.count(),
-    schedules: await prisma.schedule.count(),
     orders: await prisma.order.count(),
-    coupons: await prisma.coupon.count(),
-    reviews: await prisma.productReview.count(),
-    notifications: await prisma.notification.count(),
   };
 
   console.log("📈 ESTATÍSTICAS:");
   console.log(`   👥 Usuários: ${stats.users}`);
-  console.log(`   📦 Categorias: ${stats.categories}`);
   console.log(`   📱 Produtos: ${stats.products}`);
   console.log(`   🛠️  Serviços: ${stats.services}`);
-  console.log(`   📅 Agendamentos: ${stats.schedules}`);
-  console.log(`   🛒 Pedidos: ${stats.orders}`);
-  console.log(`   🎫 Cupons: ${stats.coupons}`);
-  console.log(`   ⭐ Avaliações: ${stats.reviews}`);
-  console.log(`   🔔 Notificações: ${stats.notifications}\n`);
+  console.log(`   🛒 Pedidos: ${stats.orders}\n`);
 
-  console.log("🔑 CREDENCIAIS DE ACESSO:");
-  console.log("\n   ADMIN:");
-  console.log(`   Email: admin@applestore.com`);
-  console.log(`   Senha: ${adminPassword}`);
-  
-  console.log("\n   TÉCNICOS:");
-  console.log(`   Email: lucas@applestore.com`);
-  console.log(`   Senha: Staff@123`);
-  console.log(`   Email: fernanda@applestore.com`);
-  console.log(`   Senha: Staff@123`);
-  
-  console.log("\n   CLIENTES:");
-  console.log(`   Email: joao@example.com`);
-  console.log(`   Senha: Cliente@123`);
-  console.log(`   Email: maria@example.com`);
-  console.log(`   Senha: Cliente@123\n`);
-
-  console.log("💡 PRÓXIMOS PASSOS:");
-  console.log("   1. Execute 'npm run dev' para iniciar o servidor");
-  console.log("   2. Acesse http://localhost:3000");
-  console.log("   3. Faça login com uma das credenciais acima");
-  console.log("   4. Explore produtos, serviços e agendamentos!\n");
+  console.log("🔑 CREDENCIAIS:");
+  console.log(`   Admin: admin@applestore.com / ${adminPassword}`);
+  console.log(`   Staff: lucas@applestore.com / Staff@123`);
+  console.log(`   Cliente: joao@example.com / Cliente@123\n`);
 
   console.log("=".repeat(70) + "\n");
 }
 
 main()
-  .catch((e) => {
-    console.error("\n❌ ERRO NO SEED:");
-    console.error(e);
+  .catch((error) => {
+    console.error("Seed failed:", error);
     process.exit(1);
   })
   .finally(async () => {

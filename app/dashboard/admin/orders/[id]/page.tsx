@@ -31,14 +31,21 @@ function statusLabel(status: OrderStatus) {
   }
 }
 
-export default async function AdminOrderDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+type PageProps = {
+  params: Promise<{ id: string }> | { id: string };
+};
+
+export default async function AdminOrderDetailPage({ params }: PageProps) {
   try {
+    const resolvedParams = await Promise.resolve(params);
+    const orderId = resolvedParams?.id;
+
+    if (!orderId) {
+      notFound();
+    }
+
     const order = await prisma.order.findUnique({
-      where: { id: params.id },
+      where: { id: orderId },
       include: {
         user: {
           include: {
@@ -70,7 +77,7 @@ export default async function AdminOrderDetailPage({
           <div className="rounded-md border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/40">
             <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
               <AlertCircle className="w-5 h-5" />
-              <span>Pedido #{params.id.slice(-8)} não encontrado no sistema.</span>
+              <span>Pedido #{orderId.slice(-8)} não encontrado no sistema.</span>
             </div>
           </div>
         </section>

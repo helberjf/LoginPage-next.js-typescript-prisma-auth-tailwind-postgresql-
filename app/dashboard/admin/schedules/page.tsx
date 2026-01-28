@@ -18,9 +18,14 @@ import { Button } from "@/components/ui/button";
 
 type Schedule = {
   id: string;
-  title: string;
-  date: Date;
-  time: string;
+  startAt: string;
+  endAt: string;
+  notes: string | null;
+  service?: { id: string; name: string } | null;
+  user?: { id: string; name: string | null; email: string | null } | null;
+  employee?: { id: string; name: string | null; email: string | null } | null;
+  guestName?: string | null;
+  guestEmail?: string | null;
 };
 
 export default function AdminSchedulesPage() {
@@ -33,17 +38,47 @@ export default function AdminSchedulesPage() {
   const [filterText, setFilterText] = useState("");
   const [filterByMonth, setFilterByMonth] = useState(false);
 
-  // Mock de dados de agendamento (substituir por dados da API)
   useEffect(() => {
-    const mockSchedules: Schedule[] = [
-      { id: "1", title: "Reunião com Cliente A", date: new Date(), time: "10:00" },
-      { id: "2", title: "Preparar Relatório", date: new Date(), time: "14:30" },
-      { id: "3", title: "Agendamento com B", date: new Date(2026, 0, 22), time: "09:00" },
-      { id: "4", title: "Manutenção do Sistema", date: new Date(2026, 0, 22), time: "16:00" },
-    ];
-    setSchedules(mockSchedules);
-    setLoading(false);
-  }, []);
+    const load = async () => {
+      try {
+        setLoading(true);
+
+        const rangeStart = filterByMonth
+          ? startOfMonth(selectedMonth)
+          : selectedDay
+          ? new Date(new Date(selectedDay).setHours(0, 0, 0, 0))
+          : startOfMonth(new Date());
+
+        const rangeEnd = filterByMonth
+          ? endOfMonth(selectedMonth)
+          : selectedDay
+          ? new Date(new Date(selectedDay).setHours(23, 59, 59, 999))
+          : endOfMonth(new Date());
+
+        const params = new URLSearchParams();
+        params.append("start", rangeStart.toISOString());
+        params.append("end", rangeEnd.toISOString());
+
+        const res = await fetch(`/api/admin/schedules?${params.toString()}`, {
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          throw new Error("Erro ao carregar agendamentos");
+        }
+
+        const data = await res.json();
+        setSchedules(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error(error);
+        setSchedules([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void load();
+  }, [filterByMonth, selectedDay, selectedMonth]);
 
   useEffect(() => {
     let filtered = schedules;
@@ -51,19 +86,27 @@ export default function AdminSchedulesPage() {
     // Filtrar por mês
     if (filterByMonth && selectedMonth) {
       filtered = filtered.filter((schedule) =>
-        isSameMonth(schedule.date, selectedMonth)
+        isSameMonth(new Date(schedule.startAt), selectedMonth)
       );
     }
     // Filtrar por dia específico
     else if (selectedDay) {
-      filtered = filtered.filter((schedule) => isSameDay(schedule.date, selectedDay));
+      filtered = filtered.filter((schedule) =>
+        isSameDay(new Date(schedule.startAt), selectedDay)
+      );
     }
 
     // Filtrar por texto
     if (filterText) {
-      filtered = filtered.filter((schedule) =>
-        schedule.title.toLowerCase().includes(filterText.toLowerCase())
-      );
+      filtered = filtered.filter((schedule) => {
+        const customerName = schedule.user?.name ?? schedule.user?.email ?? schedule.guestName ?? schedule.guestEmail ?? "";
+        const serviceName = schedule.service?.name ?? "";
+        const professional = schedule.employee?.name ?? schedule.employee?.email ?? "";
+        const notes = schedule.notes ?? "";
+
+        const haystack = `${customerName} ${serviceName} ${professional} ${notes}`.toLowerCase();
+        return haystack.includes(filterText.toLowerCase());
+      });
     }
 
     setFilteredSchedules(filtered);
@@ -74,16 +117,33 @@ export default function AdminSchedulesPage() {
     : "Por favor, selecione um dia.";
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-semibold mb-4">Gerenciar Agendamentos</h1>
-      <Button onClick={() => setIsFilterModalOpen(true)} className="mb-4">
-        🔍 Filtrar Agendamentos
-      </Button>
+    <div className="max-w-6xl mx-auto space-y-4 p-3 sm:p-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Gerenciar Agendamentos</h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            Visão geral dos agendamentos por dia ou mês.
+          </p>
+        </div>
+        <Button onClick={() => setIsFilterModalOpen(true)}>
+          🔍 Filtrar Agendamentos
+        </Button>
+      </div>
 
-      <div className="bg-white dark:bg-neutral-800 p-6 rounded-lg shadow flex flex-col md:flex-row gap-4">
-        <div className="md:w-1/2">
-          <h2 className="text-xl font-semibold mb-2">Calendário</h2>
-          <div className="flex gap-2 mb-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 sm:p-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold">Calendário</h2>
+            <span className="text-xs text-neutral-500 dark:text-neutral-400">
+              {filterByMonth
+                ? format(selectedMonth, "MMMM yyyy", { locale: ptBR })
+                : selectedDay
+                ? format(selectedDay, "PP", { locale: ptBR })
+                : "Selecione um dia"}
+            </span>
+          </div>
+
+          <div className="flex flex-wrap gap-2 mb-4">
             <Button
               variant={filterByMonth ? "default" : "outline"}
               onClick={() => setFilterByMonth(true)}
@@ -102,10 +162,7 @@ export default function AdminSchedulesPage() {
 
           {filterByMonth ? (
             <div>
-              <p className="text-sm font-medium mb-2">
-                Mês: {format(selectedMonth, "MMMM yyyy", { locale: ptBR })}
-              </p>
-              <div className="flex gap-2 mb-4">
+              <div className="flex flex-wrap gap-2 mb-4">
                 <Button
                   variant="outline"
                   size="sm"
@@ -153,33 +210,70 @@ export default function AdminSchedulesPage() {
           )}
         </div>
 
-        <div className="md:w-1/2">
-          <h2 className="text-xl font-semibold mb-2">
-            Agendamentos para{" "}
+        <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 sm:p-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold">
+              Agendamentos
+            </h2>
+            <span className="rounded-full border border-neutral-200 px-2 py-0.5 text-xs text-neutral-600 dark:border-neutral-800 dark:text-neutral-300">
+              {filteredSchedules.length}
+            </span>
+          </div>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-3">
             {filterByMonth
-              ? ` ${format(selectedMonth, "MMMM yyyy", { locale: ptBR })}`
+              ? `Mês: ${format(selectedMonth, "MMMM yyyy", { locale: ptBR })}`
               : selectedDay
-              ? ` ${format(selectedDay, "PPP", { locale: ptBR })}`
-              : " o período selecionado"}
-          </h2>
+              ? `Dia: ${format(selectedDay, "PPP", { locale: ptBR })}`
+              : "Período selecionado"}
+          </p>
+
           {loading ? (
-            <p>Carregando agendamentos...</p>
+            <p className="text-sm text-neutral-500">Carregando agendamentos...</p>
           ) : filteredSchedules.length > 0 ? (
-            <ul className="space-y-2">
-              {filteredSchedules.map((schedule) => (
-                <li
-                  key={schedule.id}
-                  className="p-3 border rounded-md bg-neutral-50 dark:bg-neutral-700"
-                >
-                  <p className="font-medium">{schedule.title}</p>
-                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                    {format(schedule.date, "PPP", { locale: ptBR })} às {schedule.time}
-                  </p>
-                </li>
-              ))}
+            <ul className="space-y-3">
+              {filteredSchedules.map((schedule) => {
+                const startDate = new Date(schedule.startAt);
+                const endDate = new Date(schedule.endAt);
+                const customer = schedule.user?.name ?? schedule.user?.email ?? schedule.guestName ?? schedule.guestEmail ?? "Cliente";
+                const serviceName = schedule.service?.name ?? "Serviço";
+                const professional = schedule.employee?.name ?? schedule.employee?.email ?? "Profissional";
+
+                return (
+                  <li
+                    key={schedule.id}
+                    className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-800/60"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">
+                          {serviceName}
+                        </p>
+                        <p className="text-sm text-neutral-600 dark:text-neutral-400 truncate">
+                          {customer}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-neutral-200 px-2 py-0.5 text-xs text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
+                        {format(startDate, "HH:mm")}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
+                      {format(startDate, "PPP", { locale: ptBR })} • {format(startDate, "HH:mm")} - {format(endDate, "HH:mm")}
+                    </p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                      Profissional: {professional}
+                    </p>
+                    {schedule.notes ? (
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                        {schedule.notes}
+                      </p>
+                    ) : null}
+                  </li>
+                );
+              })}
             </ul>
           ) : (
-            <p>Nenhum agendamento encontrado para este período.</p>
+            <p className="text-sm text-neutral-500">Nenhum agendamento encontrado para este período.</p>
           )}
         </div>
       </div>
@@ -193,8 +287,8 @@ export default function AdminSchedulesPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="filterText" className="text-right">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-4 sm:items-center">
+              <label htmlFor="filterText" className="text-sm text-neutral-600 dark:text-neutral-300">
                 Buscar
               </label>
               <input
@@ -202,7 +296,7 @@ export default function AdminSchedulesPage() {
                 value={filterText}
                 onChange={(e) => setFilterText(e.target.value)}
                 placeholder="Nome ou descrição..."
-                className="col-span-3 border px-3 py-2 rounded"
+                className="col-span-3 rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
               />
             </div>
           </div>

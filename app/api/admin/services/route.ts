@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const admin = await requireAdmin();
+    if (!admin.ok) return admin.response;
 
     const { searchParams } = new URL(request.url);
     const q = searchParams.get("q")?.toLowerCase() || "";
+    const categoryId = searchParams.get("categoryId") || "";
 
     const services = await prisma.service.findMany({
       where: {
@@ -20,6 +19,7 @@ export async function GET(request: NextRequest) {
             { description: { contains: q, mode: "insensitive" } },
           ],
         }),
+        ...(categoryId && { categoryId }),
       },
       include: {
         images: {
@@ -41,10 +41,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const admin = await requireAdmin();
+    if (!admin.ok) return admin.response;
 
     const body = await request.json();
     const { name, description, categoryId, durationMins, priceCents, active, images } = body;

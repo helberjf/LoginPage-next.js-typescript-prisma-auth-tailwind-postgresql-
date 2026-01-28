@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Plus, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useState } from "react";
 import { toast } from "sonner";
+import { redirect } from "next/dist/server/api-utils";
 
 type Product = {
   id: string;
@@ -47,6 +49,7 @@ function normalizeImageUrl(url?: string | null) {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const { addItem } = useCart();
+  const router = useRouter();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const images = product.images && product.images.length > 0 
@@ -84,7 +87,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         action: {
           label: "Ver carrinho",
           onClick: () => {
-            // Aqui você pode adicionar navegação para o carrinho
+            redirect("/checkout");
           },
         },
       });

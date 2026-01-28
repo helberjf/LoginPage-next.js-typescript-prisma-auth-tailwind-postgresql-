@@ -15,6 +15,7 @@ export const publicSidebar: NavItem[] = [
 
 export const customerSidebar: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: "layout" },
+  { label: "Notificações", href: "/dashboard/notifications", icon: "bell" },
   { label: "Produtos", href: "/products", icon: "package" },
   { label: "Serviços", href: "/services", icon: "wrench" },
   { label: "Agendar Serviço", href: "/schedules", icon: "calendar" },
@@ -25,14 +26,17 @@ export const customerSidebar: NavItem[] = [
 ];
 
 export const staffSidebar: NavItem[] = [
+  { label: "Notificações", href: "/dashboard/staff/notifications", icon: "bell" },
   { label: "Agenda", href: "/dashboard/staff/agenda", icon: "calendar" },
   { label: "Atendimentos", href: "/dashboard/staff/services", icon: "clipboard-list" },
 ];
 
 export const adminSidebar: NavItem[] = [
-  { label: "Dashboard Admin", href: "/dashboard/admin", icon: "layout" },
+  { label: "Dashboard Admin", href: "/dashboard/admin/dashboard", icon: "layout" },
+  { label: "Notificações", href: "/dashboard/admin/notifications", icon: "bell" },
   { label: "Pedidos", href: "/dashboard/admin/orders", icon: "package" },
   { label: "Agendamentos", href: "/dashboard/admin/schedules", icon: "calendar" },
+  { label: "Criar agendamento", href: "/dashboard/admin/schedules/bookSchedules", icon: "calendar" },
   { label: "Gerenciar Produtos", href: "/dashboard/admin/products", icon: "box" },
   { label: "Adicionar Produtos", href: "/dashboard/admin/products/new", icon: "package" },
   { label: "Meus Serviços", href: "/dashboard/admin/services", icon: "wrench" },

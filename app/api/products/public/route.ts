@@ -35,10 +35,21 @@ export async function GET(request: NextRequest) {
       },
       images: {
         where: { position: 0 },
-        select: { url: true, position: true },
+        select: { path: true, storage: true, position: true },
       },
     },
   });
 
-  return NextResponse.json(products);
+  const productsWithUrls = products.map((product) => ({
+    ...product,
+    images: product.images.map((img) => ({
+      url:
+        img.storage === "R2" || img.path.startsWith("http")
+          ? img.path
+          : `/uploads/${img.path}`,
+      position: img.position,
+    })),
+  }));
+
+  return NextResponse.json(productsWithUrls);
 }

@@ -12,7 +12,6 @@ import {
   LogOut,
   Calendar,
 } from "lucide-react";
-import { signOut } from "next-auth/react";
 
 export type SidebarItem = {
   label: string;
@@ -29,12 +28,6 @@ export const SidebarNav: SidebarItem[] = [
     href: "/dashboard",
     icon: LayoutDashboard,
     customerOnly: true,
-  },
-  {
-    label: "Dashboard Admin",
-    href: "/dashboard/admin/dashboard",
-    icon: LayoutDashboard,
-    adminOnly: true,
   },
   {
     label: "Produtos",
@@ -67,6 +60,12 @@ export const SidebarNav: SidebarItem[] = [
   },
 
   // ADMIN
+  {
+    label: "Dashboard Admin",
+    href: "/dashboard/admin/dashboard",
+    icon: LayoutDashboard,
+    adminOnly: true,
+  },
   {
     label: "Gerenciar Produtos",
     href: "/dashboard/admin/products",

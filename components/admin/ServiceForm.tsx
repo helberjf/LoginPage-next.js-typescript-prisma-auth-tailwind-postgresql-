@@ -253,42 +253,42 @@ export default function ServiceForm({ serviceId, onSuccess }: Props) {
   };
 
   if (loading) {
-    return <div className="p-4">Carregando...</div>;
+    return <div className="p-4 dark:text-gray-200">Carregando...</div>;
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">{error}</div>}
-      {success && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">{success}</div>}
+      {error && <div className="bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-300 px-4 py-3 rounded">{error}</div>}
+      {success && <div className="bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-300 px-4 py-3 rounded">{success}</div>}
 
       <div>
-        <label className="block text-sm font-medium mb-2">Nome *</label>
+        <label className="block text-sm font-medium mb-2 dark:text-gray-200">Nome *</label>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full border rounded px-3 py-2"
+          className="w-full border rounded px-3 py-2 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
           placeholder="Nome do serviço"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-2">Descrição</label>
+        <label className="block text-sm font-medium mb-2 dark:text-gray-200">Descrição</label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="w-full border rounded px-3 py-2"
+          className="w-full border rounded px-3 py-2 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
           placeholder="Descrição do serviço"
           rows={4}
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-2">Categoria *</label>
+        <label className="block text-sm font-medium mb-2 dark:text-gray-200">Categoria *</label>
         <select
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
-          className="w-full border rounded px-3 py-2 bg-white"
+          className="w-full border rounded px-3 py-2 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
           disabled={loadingCategories}
         >
           <option value="">
@@ -304,24 +304,24 @@ export default function ServiceForm({ serviceId, onSuccess }: Props) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-2">Duração (minutos) *</label>
+          <label className="block text-sm font-medium mb-2 dark:text-gray-200">Duração (minutos) *</label>
           <input
             type="number"
             value={durationMins}
             onChange={(e) => setDurationMins(e.target.value)}
-            className="w-full border rounded px-3 py-2"
+            className="w-full border rounded px-3 py-2 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
             min="1"
             step="1"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-2">Preço (R$)</label>
+          <label className="block text-sm font-medium mb-2 dark:text-gray-200">Preço (R$)</label>
           <input
             type="text"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
-            className="w-full border rounded px-3 py-2"
+            className="w-full border rounded px-3 py-2 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
             placeholder="0,00"
           />
         </div>
@@ -333,17 +333,17 @@ export default function ServiceForm({ serviceId, onSuccess }: Props) {
             type="checkbox"
             checked={active}
             onChange={(e) => setActive(e.target.checked)}
-            className="rounded"
+            className="rounded dark:bg-gray-700 dark:border-gray-600"
           />
-          <span className="text-sm font-medium">Ativo</span>
+          <span className="text-sm font-medium dark:text-gray-200">Ativo</span>
         </label>
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-2">Imagens</label>
+        <label className="block text-sm font-medium mb-2 dark:text-gray-200">Imagens</label>
         <div className="mb-4 space-y-3">
           <div>
-            <label className="block border-2 border-dashed rounded p-4 text-center cursor-pointer hover:border-blue-500">
+            <label className="block border-2 border-dashed rounded p-4 text-center cursor-pointer hover:border-blue-500 dark:border-gray-600 dark:hover:border-blue-400 dark:text-gray-300">
               <span className="text-sm">Clique para fazer upload de imagem</span>
               <input
                 type="file"
@@ -361,8 +361,8 @@ export default function ServiceForm({ serviceId, onSuccess }: Props) {
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
               placeholder="Ou cole a URL de uma imagem..."
-              className="flex-1 border rounded px-3 py-2"
-              onKeyPress={(e) => {
+              className="flex-1 border rounded px-3 py-2 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
+              onKeyUp={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
                   handleAddImageUrl();
@@ -372,7 +372,7 @@ export default function ServiceForm({ serviceId, onSuccess }: Props) {
             <button
               type="button"
               onClick={handleAddImageUrl}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
             >
               Adicionar
             </button>
@@ -388,7 +388,7 @@ export default function ServiceForm({ serviceId, onSuccess }: Props) {
                 onDragStart={() => handleDragStart(idx)}
                 onDragOver={handleDragOver}
                 onDrop={() => handleDrop(idx)}
-                className="relative border rounded overflow-hidden"
+                className="relative border rounded overflow-hidden dark:border-gray-600"
               >
                 <div className="relative w-full h-32">
                   <Image
@@ -401,7 +401,7 @@ export default function ServiceForm({ serviceId, onSuccess }: Props) {
                 <button
                   type="button"
                   onClick={() => handleRemoveImage(idx)}
-                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 text-xs hover:bg-red-600"
+                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 text-xs hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700"
                 >
                   ✕
                 </button>
@@ -415,14 +415,14 @@ export default function ServiceForm({ serviceId, onSuccess }: Props) {
         <button
           type="submit"
           disabled={saveLoading}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-700"
         >
           {saveLoading ? "Salvando..." : isEdit ? "Atualizar" : "Criar"}
         </button>
         <button
           type="button"
           onClick={() => router.push("/dashboard/admin/services")}
-          className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+          className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
         >
           Cancelar
         </button>

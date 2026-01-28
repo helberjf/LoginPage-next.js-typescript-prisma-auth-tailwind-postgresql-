@@ -8,6 +8,7 @@ import {
   Package,
   ShoppingCart,
   LogIn,
+  Calendar,
 } from "lucide-react";
 
 import { FcGoogle } from "react-icons/fc";
@@ -159,7 +160,7 @@ export default function Home() {
 
                 <Link
                   href="/login"
-                  className="flex items-center justify-center gap-2 rounded-md bg-blue-600 px-2 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+                  className="flex items-center justify-center gap-2 rounded-md border border-neutral-300 dark:border-neutral-700 bg-neutral-100 px-2 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
                 >
                   <LogIn size={12} />
                   Entrar com email
@@ -184,6 +185,21 @@ export default function Home() {
 
       {/* PRODUTOS */}
       <section className="max-w-7xl mx-auto space-y-3 sm:space-y-4 px-1 sm:px-0">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-center justify-center">
+          <Link
+            href="/products"
+            className="flex-1 sm:flex-none text-center rounded-md bg-blue-600 px-3 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            Ver produtos
+          </Link>
+          <Link
+            href="/services"
+            className="flex-1 sm:flex-none text-center rounded-md bg-emerald-600 px-3 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-emerald-700"
+          >
+            Agendar serviços
+          </Link>
+        </div>
+
         <header className="text-center space-y-1">
           <div className="flex items-center justify-center gap-2">
             <h2 className="text-xl font-bold">

@@ -2,23 +2,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
-import { auth } from "@/auth";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import { removeAccents } from "@/lib/utils/utils";
-
-/**
- * Admin guard
- */
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user?.id) return false;
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { role: true },
-  });
-
-  return user?.role === "ADMIN";
-}
 
 /**
  * Validators
@@ -55,9 +40,8 @@ const productUpdateSchema = productCreateSchema
  * GET
  */
 export async function GET(request: Request) {
-  if (!(await requireAdmin())) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const admin = await requireAdmin();
+  if (!admin.ok) return admin.response;
 
   const url = new URL(request.url);
   const id = url.searchParams.get("id");
@@ -69,7 +53,10 @@ export async function GET(request: Request) {
     const product = await prisma.product.findFirst({
       where: { id, deletedAt: null },
       include: {
-        images: { orderBy: { position: "asc" } },
+        images: {
+          orderBy: { position: "asc" },
+          select: { path: true, storage: true, position: true },
+        },
       },
     });
 
@@ -77,12 +64,21 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    return NextResponse.json({
+    const productWithUrls = {
       ...product,
+      images: product.images.map((img) => ({
+        url:
+          img.storage === "R2" || img.path.startsWith("http")
+            ? img.path
+            : `/uploads/${img.path}`,
+        position: img.position,
+      })),
       salesCount: product.salesCount ?? 0,
       ratingAverage: product.ratingAverage ?? 0,
       ratingCount: product.ratingCount ?? 0,
-    });
+    };
+
+    return NextResponse.json(productWithUrls);
   }
 
   const products = await prisma.product.findMany({
@@ -99,14 +95,24 @@ export async function GET(request: Request) {
         : {}),
     },
     include: {
-      images: { orderBy: { position: "asc" } },
+      images: {
+        orderBy: { position: "asc" },
+        select: { path: true, storage: true, position: true },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
 
   return NextResponse.json(
-    products.map(p => ({
+    products.map((p) => ({
       ...p,
+      images: p.images.map((img) => ({
+        url:
+          img.storage === "R2" || img.path.startsWith("http")
+            ? img.path
+            : `/uploads/${img.path}`,
+        position: img.position,
+      })),
       salesCount: p.salesCount ?? 0,
       ratingAverage: p.ratingAverage ?? 0,
       ratingCount: p.ratingCount ?? 0,
@@ -118,9 +124,8 @@ export async function GET(request: Request) {
  * POST
  */
 export async function POST(request: Request) {
-  if (!(await requireAdmin())) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const admin = await requireAdmin();
+  if (!admin.ok) return admin.response;
 
   const body = await request.json();
   const parsed = productCreateSchema.safeParse(body);
@@ -150,8 +155,9 @@ export async function POST(request: Request) {
       images: data.images
         ? {
             createMany: {
-              data: data.images.map(img => ({
-                url: img.url,
+              data: data.images.map((img) => ({
+                path: img.url,
+                storage: img.url.startsWith("http") ? "R2" : "LOCAL",
                 position: img.position,
               })),
             },
@@ -159,20 +165,31 @@ export async function POST(request: Request) {
         : undefined,
     },
     include: {
-      images: true,
+      images: { select: { path: true, storage: true, position: true } },
     },
   });
 
-  return NextResponse.json(created, { status: 201 });
+  return NextResponse.json(
+    {
+      ...created,
+      images: created.images.map((img) => ({
+        url:
+          img.storage === "R2" || img.path.startsWith("http")
+            ? img.path
+            : `/uploads/${img.path}`,
+        position: img.position,
+      })),
+    },
+    { status: 201 }
+  );
 }
 
 /**
  * PUT
  */
 export async function PUT(request: Request) {
-  if (!(await requireAdmin())) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const admin = await requireAdmin();
+  if (!admin.ok) return admin.response;
 
   const body = await request.json();
   const parsed = productUpdateSchema.safeParse(body);
@@ -196,8 +213,9 @@ export async function PUT(request: Request) {
           ? {
               deleteMany: {},
               createMany: {
-                data: images.map(img => ({
-                  url: img.url,
+                data: images.map((img) => ({
+                  path: img.url,
+                  storage: img.url.startsWith("http") ? "R2" : "LOCAL",
                   position: img.position,
                 })),
               },
@@ -205,11 +223,20 @@ export async function PUT(request: Request) {
           : undefined,
       },
       include: {
-        images: true,
+        images: { select: { path: true, storage: true, position: true } },
       },
     });
 
-    return NextResponse.json(updated);
+    return NextResponse.json({
+      ...updated,
+      images: updated.images.map((img) => ({
+        url:
+          img.storage === "R2" || img.path.startsWith("http")
+            ? img.path
+            : `/uploads/${img.path}`,
+        position: img.position,
+      })),
+    });
   } catch {
     return NextResponse.json(
       { error: "Product not found" },
@@ -222,9 +249,8 @@ export async function PUT(request: Request) {
  * DELETE (soft delete)
  */
 export async function DELETE(request: Request) {
-  if (!(await requireAdmin())) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const admin = await requireAdmin();
+  if (!admin.ok) return admin.response;
 
   const id = new URL(request.url).searchParams.get("id");
 

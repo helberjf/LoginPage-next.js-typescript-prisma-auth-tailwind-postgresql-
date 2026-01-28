@@ -187,7 +187,7 @@ async function ProductGrid({
       hasFreeShipping: true,
       images: {
         where: { position: 0 },
-        select: { url: true },
+        select: { path: true, storage: true, position: true },
       },
       salesCount: true,
       ratingAverage: true,
@@ -195,7 +195,18 @@ async function ProductGrid({
     },
   });
 
-  if (products.length === 0) {
+  const productsWithUrls = products.map((product) => ({
+    ...product,
+    images: product.images.map((img) => ({
+      url:
+        img.storage === "R2" || img.path.startsWith("http")
+          ? img.path
+          : `/uploads/${img.path}`,
+      position: img.position,
+    })),
+  }));
+
+  if (productsWithUrls.length === 0) {
     return (
       <div className="col-span-full text-center py-12">
         <p className="text-neutral-500">
@@ -207,7 +218,7 @@ async function ProductGrid({
     );
   }
 
-  return products.map((product) => (
+  return productsWithUrls.map((product) => (
     <ProductCard
       key={product.id}
       product={product}

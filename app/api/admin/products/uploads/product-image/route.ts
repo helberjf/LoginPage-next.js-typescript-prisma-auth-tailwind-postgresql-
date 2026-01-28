@@ -1,12 +1,30 @@
+// app/api/admin/products/uploads/product-image/route.ts
 import { NextResponse } from "next/server";
 import path from "path";
 import fs from "fs/promises";
 import crypto from "crypto";
+import { requireAdmin } from "@/lib/auth/require-admin";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export const runtime = "nodejs";
 
 const MAX_FILES = 6;
 const MAX_SIZE = 3 * 1024 * 1024;
+const allowed = ["image/png", "image/jpeg", "image/webp"];
+
+const USE_R2 = process.env.USE_R2 === "true";
+
+const r2 = USE_R2
+  ? new S3Client({
+      region: "auto",
+      endpoint: process.env.R2_ENDPOINT,
+      credentials: {
+        accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+      },
+    })
+  : null;
 
 function getFolderByDate() {
   const now = new Date();
@@ -17,9 +35,10 @@ function getFolderByDate() {
 
 export async function POST(req: Request) {
   try {
-    const formData = await req.formData();
+    const admin = await requireAdmin();
+    if (!admin.ok) return admin.response;
 
-    // ✅ aceita 1 arquivo ou vários (file repeated)
+    const formData = await req.formData();
     const filesRaw = formData.getAll("file");
     const files = filesRaw.filter((f): f is File => f instanceof File);
 
@@ -34,11 +53,54 @@ export async function POST(req: Request) {
       );
     }
 
-    const allowed = ["image/png", "image/jpeg", "image/webp"];
-
     const { yyyy, mm } = getFolderByDate();
 
-    // ✅ pasta organizada por data
+    // 🔴 MODO R2
+    if (USE_R2 && r2) {
+      const uploads = await Promise.all(
+        files.map(async (file) => {
+          if (!allowed.includes(file.type)) {
+            throw new Error("Formato inválido");
+          }
+
+          if (file.size > MAX_SIZE) {
+            throw new Error("Arquivo muito grande");
+          }
+
+          const ext =
+            file.type === "image/png"
+              ? "png"
+              : file.type === "image/webp"
+              ? "webp"
+              : "jpg";
+
+          const filename = `${Date.now()}-${crypto
+            .randomBytes(8)
+            .toString("hex")}.${ext}`;
+
+          const key = `products/${yyyy}/${mm}/${filename}`;
+
+          const command = new PutObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME!,
+            Key: key,
+            ContentType: file.type,
+          });
+
+          const uploadUrl = await getSignedUrl(r2, command, {
+            expiresIn: 60,
+          });
+
+          return {
+            uploadUrl,
+            key,
+          };
+        })
+      );
+
+      return NextResponse.json({ mode: "r2", uploads });
+    }
+
+    // 🟢 MODO LOCAL / VPS
     const uploadDir = path.join(
       process.cwd(),
       "public",
@@ -54,14 +116,14 @@ export async function POST(req: Request) {
     for (const file of files) {
       if (!allowed.includes(file.type)) {
         return NextResponse.json(
-          { error: "Formato inválido. Use PNG/JPG/WEBP." },
+          { error: "Formato inválido" },
           { status: 400 }
         );
       }
 
       if (file.size > MAX_SIZE) {
         return NextResponse.json(
-          { error: "Arquivo muito grande (max 3MB)" },
+          { error: "Arquivo muito grande" },
           { status: 400 }
         );
       }
@@ -75,17 +137,19 @@ export async function POST(req: Request) {
           ? "webp"
           : "jpg";
 
-      const filename = `${Date.now()}-${crypto.randomBytes(8).toString("hex")}.${ext}`;
-      const filepath = path.join(uploadDir, filename);
+      const filename = `${Date.now()}-${crypto
+        .randomBytes(8)
+        .toString("hex")}.${ext}`;
 
+      const filepath = path.join(uploadDir, filename);
       await fs.writeFile(filepath, buffer);
 
       urls.push(`/uploads/products/${yyyy}/${mm}/${filename}`);
     }
 
-    // compat: 1 file => {url}, multi => {urls}
-    if (urls.length === 1) return NextResponse.json({ url: urls[0] });
-    return NextResponse.json({ urls });
+    return urls.length === 1
+      ? NextResponse.json({ mode: "local", url: urls[0] })
+      : NextResponse.json({ mode: "local", urls });
   } catch (err) {
     console.error(err);
     return NextResponse.json({ error: "Erro no upload" }, { status: 500 });

@@ -53,8 +53,8 @@ export default function Navbar() {
             <Link href="/services" className="text-sm hover:underline">
               Serviços
             </Link>
-            <Link href="/schedules" className="text-sm hover:underline">
-              Agendar
+            <Link href="/products" className="text-sm hover:underline">
+              Produtos
             </Link>
             <Link
               href="/checkout"

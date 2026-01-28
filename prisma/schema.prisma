@@ -37,6 +37,12 @@ enum OrderStatus {
   REFUNDED
 }
 
+enum OrderType {
+  PRODUCT    // Apenas produtos
+  SERVICE    // Apenas serviços
+  MIXED      // Produtos + Serviços
+}
+
 enum PaymentMethod {
   PIX
   CREDIT_CARD
@@ -86,6 +92,12 @@ enum DiscountType {
   PERCENTAGE
   FIXED_AMOUNT
 }
+
+enum ImageStorage {
+  LOCAL
+  R2
+}
+
 
 ////////////////////
 // USER
@@ -227,13 +239,14 @@ model Product {
 
   discountPercent Int?
   hasFreeShipping Boolean @default(false)
-  couponCode      String?
 
-  images      ProductImage[]
-  orderItems  OrderItem[]
-  reviews     ProductReview[]
-  cartItems   CartItem[]
-  wishlistItems WishlistItem[]
+  images          ProductImage[]
+  coupons         CouponProduct[]   // 👈 CUPONS VINCULADOS AO PRODUTO
+
+  orderItems      OrderItem[]
+  reviews         ProductReview[]
+  cartItems       CartItem[]
+  wishlistItems   WishlistItem[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -250,13 +263,24 @@ model Product {
 model ProductImage {
   id        String @id @default(cuid())
   productId String
-  url       String
-  position  Int
 
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  /// Caminho relativo ou key do storage
+  /// Ex:
+  /// local: uploads/products/2026/01/img.webp
+  /// r2:    products/2026/01/img.webp
+  path     String
+
+  /// local | r2
+  storage  ImageStorage @default(LOCAL)
+
+  position Int
+
+  product  Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([productId, position])
+  @@index([productId])
 }
+
 
 ////////////////////
 // PRODUCT REVIEW (NOVO)
@@ -345,13 +369,16 @@ model Service {
 model ServiceImage {
   id        String @id @default(cuid())
   serviceId String
-  url       String
+  path      String
+  storage   ImageStorage @default(LOCAL)
   position  Int
 
   service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@unique([serviceId, position])
+  @@index([serviceId])
 }
+
 
 ////////////////////
 // SERVICE REVIEW (NOVO)
@@ -467,7 +494,6 @@ model Coupon {
 
   usageLimit    Int?
   usageCount    Int          @default(0)
-
   perUserLimit  Int?
 
   validFrom     DateTime
@@ -475,6 +501,7 @@ model Coupon {
 
   active        Boolean      @default(true)
 
+  products      CouponProduct[]   // 👈 SE VAZIO → CUPOM GLOBAL
   orders        Order[]
 
   createdAt     DateTime     @default(now())
@@ -483,6 +510,24 @@ model Coupon {
   @@index([code])
   @@index([active, validFrom, validUntil])
 }
+
+
+model CouponProduct {
+  id        String  @id @default(cuid())
+
+  couponId  String
+  productId String
+
+  coupon    Coupon  @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([couponId, productId])
+  @@index([productId])
+  @@index([couponId])
+}
+
 
 ////////////////////
 // ORDER
@@ -503,6 +548,8 @@ model Order {
   totalCents    Int
   currency      String      @default("BRL")
 
+  type          OrderType   @default(PRODUCT)
+
   // Cupom
   couponId      String?
   coupon        Coupon?     @relation(fields: [couponId], references: [id])
@@ -521,6 +568,7 @@ model Order {
   @@index([createdAt])
   @@index([guestEmail])
   @@index([userId])
+  @@index([type])
 }
 
 ////////////////////
@@ -702,6 +750,7 @@ model EmployeeAvailability {
 model Schedule {
   id               String         @id @default(cuid())
 
+  // Cliente (autenticado ou guest)
   userId           String?
   user             User?          @relation("ScheduleCustomer", fields: [userId], references: [id], onDelete: SetNull)
 
@@ -709,29 +758,33 @@ model Schedule {
   guestEmail       String?
   guestPhone       String?
 
+  // Técnico responsável
   employeeId       String?
   employee         User?          @relation("ScheduleEmployee", fields: [employeeId], references: [id], onDelete: SetNull)
 
+  // Serviço agendado
   serviceId        String
   service          Service        @relation(fields: [serviceId], references: [id], onDelete: Restrict)
 
+  // Tipo e status do agendamento
   type             ScheduleType   @default(SERVICE)
   status           ScheduleStatus @default(PENDING)
 
+  // Data e hora
   startAt          DateTime
   endAt            DateTime
 
+  // Observações
   notes            String?
 
+  // Quem criou o agendamento
   createdByUserId  String?
   createdByUser    User?          @relation("ScheduleCreatedBy", fields: [createdByUserId], references: [id])
   createdByRole    Role
 
+  // ✅ VÍNCULO COM ORDER (para pagamento)
   orderId          String?
   order            Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
-
-  paymentStatus    PaymentStatus  @default(PENDING)
-  paymentId        String?
 
   // Review e Notificações
   review           ServiceReview?
@@ -744,5 +797,5 @@ model Schedule {
   @@index([status])
   @@index([startAt])
   @@index([serviceId])
-  @@index([paymentStatus])
+  @@index([orderId]) // ✅ ADICIONAR índice para orderId
 }
