@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
  * Webhook para confirmar ou cancelar agendamentos após pagamento
  * 
  * Fluxo:
- * 1. Usuário cria agendamento (status: PENDING, paymentStatus: PENDING)
+ * 1. Usuário cria agendamento (status: PENDING)
  * 2. Usuário é redirecionado ao checkout com orderId
  * 3. MercadoPago confirma pagamento
  * 4. Webhook do MercadoPago atualiza o Order com status PAID
@@ -75,7 +75,6 @@ export async function POST(request: NextRequest) {
         where: { id: schedule.id },
         data: {
           status: "CONFIRMED",
-          paymentStatus: "PAID",
         },
         include: {
           order: true,
@@ -107,7 +106,6 @@ export async function POST(request: NextRequest) {
         where: { id: schedule.id },
         data: {
           status: "CANCELLED",
-          paymentStatus: paymentStatus || "CANCELLED",
         },
         include: {
           order: true,
@@ -179,7 +177,6 @@ export async function PUT(request: NextRequest) {
           where: { id: scheduleId },
           data: {
             status: "CONFIRMED",
-            paymentStatus: "PAID",
           },
         });
 
@@ -198,7 +195,6 @@ export async function PUT(request: NextRequest) {
           where: { id: scheduleId },
           data: {
             status: "CANCELLED",
-            paymentStatus: "CANCELLED",
           },
         });
 
@@ -215,7 +211,6 @@ export async function PUT(request: NextRequest) {
       schedule: {
         id: schedule.id,
         status: schedule.status,
-        paymentStatus: schedule.paymentStatus,
       },
     });
   } catch (error) {
