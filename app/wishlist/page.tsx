@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import Link from "next/link";
 import ProductCard from "@/components/products/ProductCard";
 
-const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL?.replace(/\/$/, "");
+const R2_PUBLIC_URL = (process.env.R2_PUBLIC_URL ?? process.env.NEXT_PUBLIC_R2_PUBLIC_URL)?.replace(/\/$/, "");
 const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME;
 
 const normalizeR2Url = (url: string) => {
@@ -38,7 +38,6 @@ export default async function WishlistPage() {
     where: { userId: session.user.id },
     include: {
       items: {
-                select: { path: true, storage: true, position: true },
         include: {
           product: {
             select: {
@@ -48,22 +47,6 @@ export default async function WishlistPage() {
               discountPercent: true,
               hasFreeShipping: true,
               salesCount: true,
-  const products =
-    wishlist?.items.map((item) => ({
-      ...item.product,
-      images: item.product.images.map((img) => {
-        const normalizedPath = normalizeR2Url(img.path);
-        return {
-          url:
-            img.storage === "R2" || normalizedPath.startsWith("http")
-              ? normalizedPath
-              : normalizedPath.startsWith("/uploads/")
-              ? normalizedPath
-              : `/uploads/${normalizedPath}`,
-          position: img.position,
-        };
-      }),
-    })) ?? [];
               ratingCount: true,
               category: {
                 select: { slug: true, name: true },
@@ -79,22 +62,26 @@ export default async function WishlistPage() {
     },
   });
 
-  const products =
-    wishlist?.items.map((item) => {
-      const product = item.product;
-      return {
-        ...product,
-        images: product.images.map((img) => ({
-          url:
-            img.storage === "R2" || img.path.startsWith("http")
-              ? img.path
-              : img.path.startsWith("/uploads/")
-              ? img.path
-              : `/uploads/${img.path}`,
+  const products = wishlist?.items?.map((item) => {
+    const product = item.product;
+    return {
+      ...product,
+      images: product.images.map((img) => {
+        const normalizedPath = normalizeR2Url(img.path);
+        const url =
+          img.storage === "R2" || normalizedPath.startsWith("http")
+            ? normalizedPath
+            : normalizedPath.startsWith("/uploads/")
+            ? normalizedPath
+            : `/uploads/${normalizedPath}`;
+
+        return {
+          url,
           position: img.position,
-        })),
-      };
-    }) ?? [];
+        };
+      }),
+    };
+  }) ?? [];
 
   return (
     <main className="min-h-screen bg-neutral-50 dark:bg-neutral-950 p-6">
