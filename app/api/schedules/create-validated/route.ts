@@ -128,7 +128,6 @@ export async function POST(request: NextRequest) {
         notes: notes || null,
         type: "SERVICE",
         status: "PENDING",
-        paymentStatus: "PENDING",
         createdByRole: "CUSTOMER",
       },
       include: {
