@@ -6,29 +6,7 @@ import { Truck, RotateCcw, Star, Calendar, Clock } from "lucide-react";
 import PurchaseBoxClient from "./PurchaseBoxClient";
 import ImageGallery from "./ImageGallery";
 import type { Metadata } from "next";
-
-const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL?.replace(/\/$/, "");
-const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME;
-
-const normalizeR2Url = (url: string) => {
-  const trimmed = url.trim();
-  if (!trimmed) return trimmed;
-
-  if (R2_PUBLIC_URL && trimmed.includes("r2.cloudflarestorage.com")) {
-    try {
-      const parsed = new URL(trimmed);
-      let path = parsed.pathname;
-      if (R2_BUCKET_NAME && path.startsWith(`/${R2_BUCKET_NAME}/`)) {
-        path = path.replace(`/${R2_BUCKET_NAME}`, "");
-      }
-      return `${R2_PUBLIC_URL}${path}`;
-    } catch {
-      return trimmed;
-    }
-  }
-
-  return trimmed;
-};
+import { normalizeR2Url } from "@/lib/utils/r2";
 
 type PageProps = {
   params: Promise<{ id: string }> | { id: string };
@@ -381,17 +359,6 @@ export default async function ProductPage({ params }: PageProps) {
                 </div>
               )}
 
-              {/* Cupom */}
-              {product.couponCode && (
-                <div className="bg-neutral-50 dark:bg-neutral-900 rounded-lg p-3 border border-neutral-200 dark:border-neutral-800">
-                  <div className="text-[10px] sm:text-xs text-neutral-600 dark:text-neutral-400 uppercase mb-1.5">
-                    {isServiceSchedule ? "Código de Referência" : "Cupom de desconto"}
-                  </div>
-                  <div className="bg-white dark:bg-neutral-800 px-2.5 py-1.5 rounded border border-blue-200 dark:border-blue-800 font-mono text-xs sm:text-sm text-blue-600 dark:text-blue-400">
-                    {product.couponCode}
-                  </div>
-                </div>
-              )}
             </article>
           </div>
         </div>
