@@ -2,12 +2,47 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Grid3X3, Package } from "lucide-react";
+import ProductCard from "@/components/products/ProductCard";
 
-export default async function CategoriesPage() {
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL?.replace(/\/$/, "");
+const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME;
+
+const normalizeR2Url = (url: string) => {
+  const trimmed = url.trim();
+  if (!trimmed) return trimmed;
+
+  if (R2_PUBLIC_URL && trimmed.includes("r2.cloudflarestorage.com")) {
+    try {
+      const parsed = new URL(trimmed);
+      let path = parsed.pathname;
+      if (R2_BUCKET_NAME && path.startsWith(`/${R2_BUCKET_NAME}/`)) {
+        path = path.replace(`/${R2_BUCKET_NAME}`, "");
+      }
+      return `${R2_PUBLIC_URL}${path}`;
+    } catch {
+      return trimmed;
+    }
+  }
+
+  return trimmed;
+};
+
+export const dynamic = "force-dynamic";
+
+export default async function CategoriesPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ category?: string | string[] }>;
+}) {
+  const resolvedSearchParams = (await searchParams) ?? {};
+  const rawCategory = resolvedSearchParams.category;
+  const selectedSlug = (Array.isArray(rawCategory) ? rawCategory[0] : rawCategory)?.trim();
+
   // Buscar categorias com contagem de produtos
   const categories = await prisma.category.findMany({
     where: {
       active: true,
+      deletedAt: null,
     },
     include: {
       _count: {
@@ -20,6 +55,57 @@ export default async function CategoriesPage() {
       name: "asc",
     },
   });
+
+  const selectedCategory = selectedSlug
+    ? await prisma.category.findFirst({
+        where: {
+          slug: selectedSlug,
+          active: true,
+          deletedAt: null,
+        },
+        include: {
+          products: {
+            where: {
+              active: true,
+              deletedAt: null,
+              stock: { gt: 0 },
+            },
+            include: {
+              category: {
+                select: { slug: true, name: true },
+              },
+              images: {
+                orderBy: {
+                  position: "asc",
+                },
+                take: 4,
+              },
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+          },
+        },
+      })
+    : null;
+
+  const productsWithUrls = selectedCategory
+    ? selectedCategory.products.map((product) => ({
+        ...product,
+        images: product.images.map((img) => {
+          const normalizedPath = normalizeR2Url(img.path);
+          return {
+            url:
+              img.storage === "R2" || normalizedPath.startsWith("http")
+                ? normalizedPath
+                : normalizedPath.startsWith("/uploads/")
+                ? normalizedPath
+                : `/uploads/${normalizedPath}`,
+            position: img.position,
+          };
+        }),
+      }))
+    : [];
 
   return (
     <section className="space-y-6 p-4 sm:p-6 max-w-6xl mx-auto">
@@ -46,45 +132,94 @@ export default async function CategoriesPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {categories.map((category) => (
-            <Link
-              key={category.id}
-              href={`/categories/${category.id}`}
-              className="group bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800 p-6 hover:shadow-lg transition-all duration-200 hover:border-blue-300 dark:hover:border-blue-600"
-            >
-              <div className="flex flex-col items-center text-center space-y-4">
-                {/* Ícone da categoria */}
-                <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 transition-colors">
-                  <Package className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-                </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          {categories.map((category) => {
+            const isActive = selectedSlug === category.slug;
+            return (
+              <Link
+                key={category.id}
+                href={`/categories?category=${encodeURIComponent(category.slug)}`}
+                className={[
+                  "group bg-white dark:bg-neutral-900 rounded-md border p-3 sm:p-4 transition-all duration-200",
+                  isActive
+                    ? "border-blue-500 ring-2 ring-blue-200 dark:ring-blue-900"
+                    : "border-neutral-200 dark:border-neutral-800 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600",
+                ].join(" ")}
+              >
+                <div className="flex flex-col items-center text-center space-y-2">
+                  {/* Informações da categoria */}
+                  <div className="flex-1 w-full">
+                    <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                      {category.name}
+                    </h3>
 
-                {/* Informações da categoria */}
-                <div className="flex-1 w-full">
-                  <h3 className="font-semibold text-neutral-900 dark:text-neutral-100 mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                    {category.name}
-                  </h3>
-                  
-                  {category.description && (
-                    <p className="text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2 mb-3">
-                      {category.description}
-                    </p>
-                  )}
+                    {category.description && (
+                      <p className="text-[11px] text-neutral-600 dark:text-neutral-400 line-clamp-1">
+                        {category.description}
+                      </p>
+                    )}
 
-                  {/* Contador de produtos */}
-                  <div className="inline-flex items-center gap-1 text-xs bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 px-2 py-1 rounded-full">
-                    <Package className="w-3 h-3" />
-                    {category._count.products} produto{category._count.products !== 1 ? 's' : ''}
+                    {/* Contador de produtos */}
+                    <div className="mt-1 inline-flex items-center gap-1 text-[10px] bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 px-2 py-0.5 rounded-full">
+                      <Package className="w-2.5 h-2.5" />
+                      {category._count.products} produto{category._count.products !== 1 ? "s" : ""}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       )}
 
+      {/* Produtos da categoria selecionada */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div>
+            <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+              {selectedCategory ? `Produtos em ${selectedCategory.name}` : "Selecione uma categoria"}
+            </h2>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              {selectedCategory
+                ? "Confira os itens disponíveis abaixo"
+                : "Clique em uma categoria acima para ver os produtos"}
+            </p>
+          </div>
+          {selectedCategory && (
+            <Link
+              href={`/categories?category=${encodeURIComponent(selectedCategory.slug)}`}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Ver página da categoria
+            </Link>
+          )}
+        </div>
+
+        {selectedCategory ? (
+          productsWithUrls.length === 0 ? (
+            <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-8 text-center">
+              <p className="text-neutral-600 dark:text-neutral-400">
+                Nenhum produto disponível nesta categoria no momento.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {productsWithUrls.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          )
+        ) : (
+          <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 p-8 text-center">
+            <p className="text-neutral-600 dark:text-neutral-400">
+              Escolha uma categoria para ver os produtos aqui.
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* Seção de destaque */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-8 text-center">
+      <div className="bg-linear-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-8 text-center">
         <h2 className="text-xl font-semibold text-blue-900 dark:text-blue-100 mb-3">
           Não encontrou o que procura?
         </h2>

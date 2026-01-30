@@ -7,6 +7,7 @@ export type NavItem = {
 export const publicSidebar: NavItem[] = [
   { label: "Início", href: "/", icon: "home" },
   { label: "Produtos", href: "/products", icon: "package" },
+  { label: "Categorias", href: "/categories", icon: "grid" },
   { label: "Serviços", href: "/services", icon: "wrench" },
   { label: "Agendar", href: "/schedules", icon: "calendar" },
   { label: "Carrinho", href: "/checkout", icon: "shopping-cart" },
@@ -17,6 +18,7 @@ export const customerSidebar: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: "layout" },
   { label: "Notificações", href: "/dashboard/notifications", icon: "bell" },
   { label: "Produtos", href: "/products", icon: "package" },
+  { label: "Categorias", href: "/categories", icon: "grid" },
   { label: "Serviços", href: "/services", icon: "wrench" },
   { label: "Agendar Serviço", href: "/schedules", icon: "calendar" },
   { label: "Meus Pedidos", href: "/dashboard/orders", icon: "package" },
@@ -29,6 +31,7 @@ export const staffSidebar: NavItem[] = [
   { label: "Notificações", href: "/dashboard/staff/notifications", icon: "bell" },
   { label: "Agenda", href: "/dashboard/staff/agenda", icon: "calendar" },
   { label: "Atendimentos", href: "/dashboard/staff/services", icon: "clipboard-list" },
+  { label: "Categorias", href: "/categories", icon: "grid" },
 ];
 
 export const adminSidebar: NavItem[] = [
@@ -39,6 +42,7 @@ export const adminSidebar: NavItem[] = [
   { label: "Criar agendamento", href: "/dashboard/admin/schedules/bookSchedules", icon: "calendar" },
   { label: "Gerenciar Produtos", href: "/dashboard/admin/products", icon: "box" },
   { label: "Adicionar Produtos", href: "/dashboard/admin/products/new", icon: "package" },
+  { label: "Categorias", href: "/categories", icon: "grid" },
   { label: "Meus Serviços", href: "/dashboard/admin/services", icon: "wrench" },
   { label: "Usuários", href: "/dashboard/admin/users", icon: "users" },
 ];
