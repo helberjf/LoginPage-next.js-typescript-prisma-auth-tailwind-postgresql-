@@ -14,7 +14,7 @@ export const authConfig: NextAuthConfig = {
 
   logger: {
     error(code, ...message) {
-      if (code === "CredentialsSignin") return;
+      if (code instanceof CredentialsSignin || code.name === "CredentialsSignin") return;
       console.error(code, ...message);
     },
   },
