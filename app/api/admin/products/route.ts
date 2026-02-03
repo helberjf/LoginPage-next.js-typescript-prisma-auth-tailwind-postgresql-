@@ -55,6 +55,12 @@ export async function GET(request: Request) {
     const product = await prisma.product.findFirst({
       where: { id, deletedAt: null },
       include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         images: {
           orderBy: { position: "asc" },
           select: { path: true, storage: true, position: true },

@@ -8,14 +8,18 @@ import {
   ClipboardList,
   CreditCard,
   Grid3X3,
+  Heart,
   Home,
   LayoutDashboard,
   Bell,
+  Mail,
+  MessageCircle,
   Package,
   Search,
   ShoppingCart,
   User,
   Users,
+  Warehouse,
   Wrench,
   Box,
 } from "lucide-react";
@@ -34,8 +38,11 @@ export default function Sidebar({ items, footer }: SidebarProps) {
     "clipboard-list": ClipboardList,
     "credit-card": CreditCard,
     "grid": Grid3X3,
+    "heart": Heart,
     "home": Home,
     "layout": LayoutDashboard,
+    "mail": Mail,
+    "whatsapp": MessageCircle,
     "bell": Bell,
     "box": Box,
     "package": Package,
@@ -43,6 +50,7 @@ export default function Sidebar({ items, footer }: SidebarProps) {
     "shopping-cart": ShoppingCart,
     "user": User,
     "users": Users,
+    "warehouse": Warehouse,
     "wrench": Wrench,
   };
 
@@ -52,11 +60,14 @@ export default function Sidebar({ items, footer }: SidebarProps) {
         {items.map(({ label, href, icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
           const Icon = iconMap[icon] ?? Package;
+          const isExternal = href.startsWith("http");
 
           return (
             <Link
               key={href}
               href={href}
+              target={isExternal ? "_blank" : undefined}
+              rel={isExternal ? "noreferrer" : undefined}
               className={[
                 "flex items-center gap-3 px-3 py-2 rounded-md transition",
                 active

@@ -5,49 +5,70 @@ import { generateToken } from "@/lib/token";
 import { sendEmail } from "@/lib/mailgun";
 import { verificationEmailTemplate } from "@/lib/email-templates/verification";
 
+export const runtime = "nodejs";
 
 const COOLDOWN_MINUTES = 5;
 
+function getErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return "Erro desconhecido";
+  }
+}
+
 export async function POST(req: Request) {
   try {
-    const { email } = await req.json();
+    const body = (await req.json().catch(() => null)) as { email?: unknown } | null;
 
+    const email = body?.email;
     if (!email || typeof email !== "string") {
       return NextResponse.json(
-        { error: "Email obrigatório" },
+        { ok: false, error: "Email obrigatório" },
         { status: 400 }
       );
     }
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    const user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
+    // ✅ Resposta padrão (não vaza se existe ou não existe conta)
+    const genericOkResponse = NextResponse.json({
+      ok: true,
+      message:
+        "Se este email estiver cadastrado, você receberá um link de confirmação. Verifique a caixa de entrada e o spam.",
     });
 
+    // Busca usuário
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true, emailVerified: true },
+    });
+
+    // Se não existe ou já está verificado, retorna a mesma mensagem genérica
     if (!user || user.emailVerified) {
-      return NextResponse.json({ ok: true });
+      return genericOkResponse;
     }
 
-    // ⏱️ Rate limit por cooldown
+    // ⏱️ Cooldown
     const lastToken = await prisma.verificationToken.findFirst({
       where: {
         identifier: normalizedEmail,
         type: "VERIFY_EMAIL",
       },
       orderBy: { expires: "desc" },
+      select: { expires: true },
     });
 
     if (lastToken) {
-      const createdAt = new Date(
-        lastToken.expires.getTime() - 1000 * 60 * 60 * 24
-      );
-
-      const diffMinutes =
-        (Date.now() - createdAt.getTime()) / 1000 / 60;
+      // você estava inferindo "createdAt" a partir do expires - mantém a lógica
+      const createdAt = new Date(lastToken.expires.getTime() - 1000 * 60 * 60 * 24);
+      const diffMinutes = (Date.now() - createdAt.getTime()) / 1000 / 60;
 
       if (diffMinutes < COOLDOWN_MINUTES) {
-        return NextResponse.json({ ok: true });
+        // ✅ Não mude o formato do retorno (evita vazamento por diferença)
+        return genericOkResponse;
       }
     }
 
@@ -59,6 +80,7 @@ export async function POST(req: Request) {
       },
     });
 
+    // Cria novo token
     const token = generateToken();
     const expires = new Date(Date.now() + 1000 * 60 * 60 * 24);
 
@@ -71,7 +93,12 @@ export async function POST(req: Request) {
       },
     });
 
-    const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL}/verify-email?token=${token}`;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+    if (!appUrl) {
+      throw new Error("NEXT_PUBLIC_APP_URL not set");
+    }
+
+    const verifyUrl = `${appUrl}/verify-email?token=${token}`;
 
     await sendEmail({
       to: normalizedEmail,
@@ -82,9 +109,12 @@ export async function POST(req: Request) {
       }),
     });
 
-    return NextResponse.json({ ok: true });
-  } catch (err) {
+    return genericOkResponse;
+  } catch (err: unknown) {
     console.error("send-verification-email error:", err);
-    return NextResponse.json({ ok: true });
+    return NextResponse.json(
+      { ok: false, error: getErrorMessage(err) },
+      { status: 500 }
+    );
   }
 }

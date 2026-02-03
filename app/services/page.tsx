@@ -4,8 +4,17 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { Search, Clock, DollarSign, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type Service = {
   id: string;
@@ -26,6 +35,7 @@ type ServiceCategory = {
 
 export default function ServicesPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [services, setServices] = useState<Service[]>([]);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +45,8 @@ export default function ServicesPage() {
   const [priceFilterOpen, setPriceFilterOpen] = useState(false);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
   const [hideSearchBar, setHideSearchBar] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [pendingRedirect, setPendingRedirect] = useState<string | null>(null);
 
   // Fetch services e categorias
   useEffect(() => {
@@ -102,6 +114,13 @@ export default function ServicesPage() {
     });
   }, [services, searchTerm, selectedCategories, priceRange]);
 
+  const loginUrl = pendingRedirect
+    ? `/login?redirect=${encodeURIComponent(pendingRedirect)}`
+    : "/login";
+  const registerUrl = pendingRedirect
+    ? `/register?redirect=${encodeURIComponent(pendingRedirect)}`
+    : "/register";
+
   const toggleCategory = (categoryId: string) => {
     setSelectedCategories((prev) =>
       prev.includes(categoryId)
@@ -122,15 +141,32 @@ export default function ServicesPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-900">
+      <section className="relative overflow-hidden border-b border-neutral-200 dark:border-neutral-800">
+        <div className="absolute inset-0 bg-linear-to-br from-blue-50 via-white to-emerald-50 dark:from-neutral-900 dark:via-neutral-950 dark:to-blue-950/30" />
+        <div className="relative max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8">
+          <div className="max-w-2xl space-y-3">
+            <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600 dark:border-blue-900/50 dark:bg-neutral-900/80 dark:text-blue-300">
+              Serviços
+            </span>
+            <h1 className="text-3xl sm:text-4xl font-bold text-neutral-900 dark:text-white">
+              Encontre o serviço ideal para você
+            </h1>
+            <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-300">
+              Agendamentos rápidos, profissionais selecionados e atendimento personalizado.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* HEADER MOBILE-FIRST */}
       <div
         className={cn(
-          "sticky top-14 md:top-14 z-40 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 shadow-sm transition-transform duration-300 will-change-transform",
+          "sticky top-14 md:top-14 z-40 bg-white/90 dark:bg-neutral-900/90 backdrop-blur border-b border-neutral-200 dark:border-neutral-800 shadow-sm transition-transform duration-300 will-change-transform",
           hideSearchBar && "-translate-y-full pointer-events-none"
         )}
       >
         {/* Barra de Busca */}
-        <div className="p-3 md:p-4">
+        <div className="p-2 sm:p-3">
           <div className="flex flex-col gap-2 md:flex-row md:items-center max-w-7xl mx-auto">
             <div className="flex-1 flex items-center gap-2">
               <div className="flex-1 relative">
@@ -174,7 +210,7 @@ export default function ServicesPage() {
               </div>
             </div>
 
-            <div className="md:w-64">
+            <div className="md:w-56">
               <select
                 value={selectedCategory}
                 onChange={(e) => handleCategorySelect(e.target.value)}
@@ -193,34 +229,43 @@ export default function ServicesPage() {
       </div>
 
       {/* CONTEÚDO PRINCIPAL */}
-      <div className="flex max-w-7xl mx-auto">
+      <div className="flex max-w-7xl mx-auto px-3 sm:px-4">
         {/* FILTROS DESKTOP (Sidebar) */}
         <aside className="hidden md:block w-64 border-r border-neutral-200 dark:border-neutral-800 p-4 sticky top-32 h-fit max-h-[calc(100vh-8rem)]">
-          <h2 className="font-bold text-lg mb-4">Filtrar</h2>
+          <div className="mb-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-400">Filtros</p>
+          </div>
 
           {/* Categorias */}
           <div className="mb-6">
-            <h3 className="font-semibold text-sm mb-3">Categorias</h3>
-            <div className="space-y-2">
-              {categories.map((cat) => (
-                <label key={cat.id} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedCategories.includes(cat.id)}
-                    onChange={() => toggleCategory(cat.id)}
-                    className="w-4 h-4 rounded border-neutral-300 text-blue-600"
-                  />
-                  <span className="text-sm">{cat.name}</span>
-                </label>
-              ))}
+            <h3 className="font-semibold text-sm mb-3 text-neutral-700 dark:text-neutral-300">Categorias</h3>
+            <div className="flex flex-wrap gap-2">
+              {categories.map((cat) => {
+                const active = selectedCategories.includes(cat.id);
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => toggleCategory(cat.id)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-xs font-semibold border transition",
+                      active
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-800 hover:border-blue-300"
+                    )}
+                  >
+                    {cat.name}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {/* Preço */}
           <div>
-            <h3 className="font-semibold text-sm mb-3">Faixa de Preço</h3>
-            <div className="space-y-2">
-              <label className="text-sm text-neutral-600 dark:text-neutral-400">
+            <h3 className="font-semibold text-sm mb-3 text-neutral-700 dark:text-neutral-300">Faixa de Preço</h3>
+            <div className="space-y-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-900/40 p-3">
+              <label className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">
                 Até R$ {priceRange[1]}
               </label>
               <input
@@ -238,7 +283,7 @@ export default function ServicesPage() {
         </aside>
 
         {/* GRID DE SERVIÇOS */}
-        <main className="flex-1 p-3 md:p-4">
+        <main className="flex-1 p-2 sm:p-3">
           {loading ? (
             <div className="flex items-center justify-center min-h-[400px]">
               <div className="animate-pulse space-y-4">
@@ -257,7 +302,7 @@ export default function ServicesPage() {
               </p>
 
               {/* Mercado Livre style: list on mobile, grid on desktop */}
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {filteredServices.map((service) => {
                   const image = service.images?.[0];
                   const price = (service.priceCents / 100).toFixed(2);
@@ -265,11 +310,11 @@ export default function ServicesPage() {
                   return (
                     <div
                       key={service.id}
-                      className="group bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
+                      className="group bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden hover:shadow-lg transition-all"
                     >
-                      <div className="flex flex-row md:flex-col">
+                      <div className="flex flex-col">
                         {/* Imagem */}
-                        <div className="relative w-24 min-w-24 h-24 md:w-full md:h-40 bg-neutral-100 dark:bg-neutral-700 overflow-hidden">
+                        <div className="relative w-full h-40 bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
                           {image ? (
                             <Image
                               src={image.url}
@@ -282,49 +327,56 @@ export default function ServicesPage() {
                               <DollarSign className="w-10 h-10 text-neutral-400" />
                             </div>
                           )}
+                          <div className="absolute bottom-2 left-2 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-neutral-900 shadow-sm dark:bg-neutral-900/90 dark:text-neutral-100">
+                            R$ {price}
+                          </div>
+                        </div>
+
+                        <div className="px-3 pt-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="inline-flex items-center gap-2 rounded-full bg-neutral-100 dark:bg-neutral-800 px-2.5 py-1 text-[11px] font-semibold text-neutral-600 dark:text-neutral-300">
+                              <Clock className="w-3.5 h-3.5" />
+                              <span>{service.durationMins}min</span>
+                            </div>
+                            <div className="inline-flex items-center gap-2 rounded-full bg-white dark:bg-neutral-900 px-2.5 py-1 text-[11px] font-semibold text-neutral-500 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800">
+                              <Tag className="w-3.5 h-3.5" />
+                              <span>{service.category?.name ?? "Serviço"}</span>
+                            </div>
+                          </div>
                         </div>
 
                         {/* Conteúdo */}
-                        <div className="flex-1 p-3 md:p-4 space-y-2">
-                          {/* Categoria */}
-                          <div className="flex items-center gap-2 text-xs text-neutral-500">
-                            <Tag className="w-3.5 h-3.5" />
-                            <span>{service.category?.name ?? "Serviço"}</span>
-                          </div>
-
+                        <div className="flex-1 p-3 space-y-2">
                           {/* Nome */}
-                          <h3 className="font-semibold text-sm md:text-base line-clamp-2 group-hover:text-blue-600">
+                          <h3 className="font-semibold text-base line-clamp-2 group-hover:text-blue-600">
                             {service.name}
                           </h3>
 
                           {/* Descrição */}
-                          <p className="text-xs text-neutral-600 dark:text-neutral-400 line-clamp-2">
+                          <p className="text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2">
                             {service.description}
                           </p>
 
                           {/* Informações */}
-                          <div className="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400">
-                            <div className="flex items-center gap-2">
-                              <Clock className="w-3.5 h-3.5" />
-                              <span>{service.durationMins}min</span>
-                            </div>
-                            <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-                              R$ {price}
-                            </span>
-                          </div>
-
                           {/* Ações */}
-                          <div className="pt-2 border-t border-neutral-200 dark:border-neutral-700">
+                          <div className="pt-2 border-t border-neutral-200 dark:border-neutral-800">
                             <div className="mt-2 flex items-center gap-2">
                               <Link
                                 href={`/schedules?serviceId=${service.id}`}
-                                className="inline-flex flex-1 items-center justify-center rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition"
+                                onClick={(event) => {
+                                  if (!session?.user) {
+                                    event.preventDefault();
+                                    setPendingRedirect(`/schedules?serviceId=${service.id}`);
+                                    setAuthModalOpen(true);
+                                  }
+                                }}
+                                className="inline-flex flex-1 items-center justify-center rounded-full bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition"
                               >
                                 Agendar agora
                               </Link>
                               <Link
                                 href={`/services/${service.id}`}
-                                className="inline-flex items-center justify-center text-xs font-semibold text-green-600 underline hover:text-green-700"
+                                className="inline-flex items-center justify-center text-xs font-semibold text-emerald-600 hover:text-emerald-700"
                               >
                                 Ver detalhes
                               </Link>
@@ -340,6 +392,31 @@ export default function ServicesPage() {
           )}
         </main>
       </div>
+
+      <Dialog open={authModalOpen} onOpenChange={setAuthModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Faça login para agendar</DialogTitle>
+            <DialogDescription>
+              Para agendar um serviço, é necessário entrar ou criar uma conta.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Link
+              href={registerUrl}
+              className="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800/60"
+            >
+              Criar conta
+            </Link>
+            <Link
+              href={loginUrl}
+              className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              Entrar
+            </Link>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

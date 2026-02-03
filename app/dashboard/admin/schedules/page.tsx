@@ -20,12 +20,18 @@ type Schedule = {
   id: string;
   startAt: string;
   endAt: string;
+  status?: string;
   notes: string | null;
   service?: { id: string; name: string } | null;
   user?: { id: string; name: string | null; email: string | null } | null;
   employee?: { id: string; name: string | null; email: string | null } | null;
   guestName?: string | null;
   guestEmail?: string | null;
+};
+
+type Employee = {
+  id: string;
+  name: string | null;
 };
 
 export default function AdminSchedulesPage() {
@@ -37,6 +43,18 @@ export default function AdminSchedulesPage() {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filterText, setFilterText] = useState("");
   const [filterByMonth, setFilterByMonth] = useState(false);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    startAt: "",
+    endAt: "",
+    status: "PENDING",
+    employeeId: "",
+    notes: "",
+  });
 
   useEffect(() => {
     const load = async () => {
@@ -81,6 +99,21 @@ export default function AdminSchedulesPage() {
   }, [filterByMonth, selectedDay, selectedMonth]);
 
   useEffect(() => {
+    const loadEmployees = async () => {
+      try {
+        const response = await fetch("/api/schedules/employees");
+        if (!response.ok) return;
+        const data = await response.json();
+        setEmployees(Array.isArray(data.employees) ? data.employees : []);
+      } catch (error) {
+        console.error("Erro ao carregar profissionais:", error);
+      }
+    };
+
+    void loadEmployees();
+  }, []);
+
+  useEffect(() => {
     let filtered = schedules;
 
     // Filtrar por mês
@@ -115,6 +148,65 @@ export default function AdminSchedulesPage() {
   const footer = selectedDay
     ? `Você selecionou ${format(selectedDay, "PP", { locale: ptBR })}.`
     : "Por favor, selecione um dia.";
+
+  const formatDateTimeLocal = (dateValue: string) => {
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) return "";
+    const offset = date.getTimezoneOffset();
+    const localDate = new Date(date.getTime() - offset * 60 * 1000);
+    return localDate.toISOString().slice(0, 16);
+  };
+
+  const handleEditClick = (schedule: Schedule) => {
+    setEditingSchedule(schedule);
+    setEditError(null);
+    setEditForm({
+      startAt: formatDateTimeLocal(schedule.startAt),
+      endAt: formatDateTimeLocal(schedule.endAt),
+      status: schedule.status ?? "PENDING",
+      employeeId: schedule.employee?.id ?? "",
+      notes: schedule.notes ?? "",
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSubmit = async () => {
+    if (!editingSchedule) return;
+    setEditLoading(true);
+    setEditError(null);
+
+    try {
+      const response = await fetch("/api/admin/schedules", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingSchedule.id,
+          startAt: editForm.startAt ? new Date(editForm.startAt).toISOString() : null,
+          endAt: editForm.endAt ? new Date(editForm.endAt).toISOString() : null,
+          status: editForm.status,
+          employeeId: editForm.employeeId || null,
+          notes: editForm.notes || null,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data?.error || "Erro ao atualizar agendamento");
+      }
+
+      const updated = (await response.json()) as Schedule;
+      setSchedules((prev) =>
+        prev.map((schedule) => (schedule.id === updated.id ? updated : schedule))
+      );
+      setIsEditModalOpen(false);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Erro ao atualizar agendamento";
+      setEditError(message);
+    } finally {
+      setEditLoading(false);
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto space-y-4 p-3 sm:p-6">
@@ -263,6 +355,15 @@ export default function AdminSchedulesPage() {
                     <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                       Profissional: {professional}
                     </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEditClick(schedule)}
+                      >
+                        Editar agendamento
+                      </Button>
+                    </div>
                     {schedule.notes ? (
                       <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                         {schedule.notes}
@@ -303,6 +404,110 @@ export default function AdminSchedulesPage() {
           <DialogFooter>
             <Button type="button" onClick={() => setIsFilterModalOpen(false)}>
               Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar agendamento</DialogTitle>
+            <DialogDescription>
+              Atualize data, horário, status ou profissional.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid gap-2">
+              <label className="text-xs font-semibold text-neutral-600 dark:text-neutral-300">
+                Data e horário de início
+              </label>
+              <input
+                type="datetime-local"
+                value={editForm.startAt}
+                onChange={(event) =>
+                  setEditForm((prev) => ({ ...prev, startAt: event.target.value }))
+                }
+                className="rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
+              />
+            </div>
+            <div className="grid gap-2">
+              <label className="text-xs font-semibold text-neutral-600 dark:text-neutral-300">
+                Data e horário de término
+              </label>
+              <input
+                type="datetime-local"
+                value={editForm.endAt}
+                onChange={(event) =>
+                  setEditForm((prev) => ({ ...prev, endAt: event.target.value }))
+                }
+                className="rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
+              />
+            </div>
+            <div className="grid gap-2">
+              <label className="text-xs font-semibold text-neutral-600 dark:text-neutral-300">
+                Status
+              </label>
+              <select
+                value={editForm.status}
+                onChange={(event) =>
+                  setEditForm((prev) => ({ ...prev, status: event.target.value }))
+                }
+                className="rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
+              >
+                <option value="PENDING">Pendente</option>
+                <option value="CONFIRMED">Confirmado</option>
+                <option value="CANCELLED">Cancelado</option>
+                <option value="COMPLETED">Concluído</option>
+                <option value="NO_SHOW">Não compareceu</option>
+              </select>
+            </div>
+            <div className="grid gap-2">
+              <label className="text-xs font-semibold text-neutral-600 dark:text-neutral-300">
+                Profissional
+              </label>
+              <select
+                value={editForm.employeeId}
+                onChange={(event) =>
+                  setEditForm((prev) => ({ ...prev, employeeId: event.target.value }))
+                }
+                className="rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
+              >
+                <option value="">Sem profissional</option>
+                {employees.map((employee) => (
+                  <option key={employee.id} value={employee.id}>
+                    {employee.name ?? "Profissional"}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid gap-2">
+              <label className="text-xs font-semibold text-neutral-600 dark:text-neutral-300">
+                Observações
+              </label>
+              <textarea
+                rows={3}
+                value={editForm.notes}
+                onChange={(event) =>
+                  setEditForm((prev) => ({ ...prev, notes: event.target.value }))
+                }
+                className="rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
+              />
+            </div>
+            {editError && (
+              <p className="text-sm text-red-500">{editError}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditModalOpen(false)}
+              disabled={editLoading}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleEditSubmit} disabled={editLoading}>
+              {editLoading ? "Salvando..." : "Salvar alterações"}
             </Button>
           </DialogFooter>
         </DialogContent>

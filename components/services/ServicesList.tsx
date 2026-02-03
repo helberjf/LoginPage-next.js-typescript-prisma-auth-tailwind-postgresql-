@@ -54,7 +54,7 @@ export default function ServicesList({ isAuthenticated }: Props) {
 
   const handleBookClick = (service: Service) => {
     if (!isAuthenticated) {
-      alert("Você precisa estar logado para agendar um serviço");
+      alert("Faça login ou crie uma conta para agendar um serviço.");
       window.location.href = "/login";
       return;
     }

@@ -6,6 +6,8 @@ interface AvailableSlot {
   timestamp: number; // ISO timestamp
 }
 
+type TimeSlot = AvailableSlot & { available: boolean };
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -20,9 +22,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Validar data
-    const selectedDate = new Date(date);
-    if (isNaN(selectedDate.getTime())) {
+    // Validar data (parse local date)
+    const [year, month, day] = date.split("-").map(Number);
+    const selectedDate = new Date(year, (month ?? 1) - 1, day ?? 1);
+    if (!year || !month || !day || isNaN(selectedDate.getTime())) {
       return NextResponse.json(
         { error: "Data inválida" },
         { status: 400 }
@@ -78,7 +81,7 @@ export async function GET(request: NextRequest) {
 
     if (!availability || !availability.active) {
       return NextResponse.json(
-        { availableTimes: [], message: "Sem disponibilidade para este dia" },
+        { availableTimes: [], timeSlots: [], message: "Sem disponibilidade para este dia" },
         { status: 200 }
       );
     }
@@ -137,34 +140,31 @@ export async function GET(request: NextRequest) {
       currentTime.setMinutes(currentTime.getMinutes() + 30); // Incrementar em 30min
     }
 
-    // Filtrar slots que já têm agendamentos confirmados
-    if (employeeId) {
-      const existingSchedules = await prisma.schedule.findMany({
-        where: {
-          employeeId,
-          startAt: {
-            gte: startDateTime,
-            lt: endDateTime,
-          },
-          status: {
-            in: ["CONFIRMED", "PENDING"],
-          },
+    const existingSchedules = await prisma.schedule.findMany({
+      where: {
+        ...(employeeId ? { employeeId } : { serviceId }),
+        startAt: {
+          gte: startDateTime,
+          lt: endDateTime,
         },
-      });
+        status: {
+          in: ["CONFIRMED", "PENDING"],
+        },
+      },
+    });
 
-      const bookedTimes = new Set(
-        existingSchedules.map((s) => s.startAt.getTime())
-      );
+    const bookedTimes = new Set(
+      existingSchedules.map((s) => s.startAt.getTime())
+    );
 
-      return NextResponse.json({
-        availableTimes: slots.filter((slot) => !bookedTimes.has(slot.timestamp)),
-        serviceName: service.name,
-        durationMins,
-      });
-    }
+    const timeSlots: TimeSlot[] = slots.map((slot) => ({
+      ...slot,
+      available: !bookedTimes.has(slot.timestamp),
+    }));
 
     return NextResponse.json({
-      availableTimes: slots,
+      availableTimes: timeSlots.filter((slot) => slot.available),
+      timeSlots,
       serviceName: service.name,
       durationMins,
     });

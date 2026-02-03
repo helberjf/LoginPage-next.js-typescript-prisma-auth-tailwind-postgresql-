@@ -6,6 +6,7 @@ import { rateLimit } from "@/lib/rate-limit";
 const contactSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
+  subject: z.string().min(1),
   message: z.string().min(1),
 });
 
@@ -17,14 +18,15 @@ export async function POST(req: Request) {
     });
 
     const body = await req.json();
-    const { name, email, message } = contactSchema.parse(body);
+    const { name, email, subject, message } = contactSchema.parse(body);
 
     await sendEmail({
       to: process.env.CONTACT_EMAIL!,
-      subject: "Novo contato pelo site",
+      subject: subject || "Novo contato pelo site",
       html: `
         <p><strong>Nome:</strong> ${name}</p>
         <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Assunto:</strong> ${subject}</p>
         <p><strong>Mensagem:</strong></p>
         <p>${message}</p>
       `,

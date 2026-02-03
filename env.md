@@ -32,4 +32,6 @@ NEXT_PUBLIC_BASE_URL="http://localhost:3000"
 # R2_PUBLIC_URL="https://<public-domain>/<bucket>"
 # R2_DIRECT_UPLOAD=true
 
+MP_WEBHOOK_ALLOWED_IPS="1.2.3.4, 5.6.7.8"
+
 

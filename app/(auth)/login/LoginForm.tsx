@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FcGoogle } from "react-icons/fc";
+import { toast } from "sonner";
 
 import { loginSchema, LoginInput } from "@/lib/auth/validation";
 
@@ -21,6 +22,12 @@ export default function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("registered") === "1") {
+      toast.success("Conta criada! Verifique seu email para poder fazer login.");
+    }
+  }, [searchParams]);
 
   const {
     register,
@@ -46,7 +53,13 @@ export default function LoginForm() {
     setLoading(false);
 
     if (!result || result.error) {
-      setError("Email ou senha inválidos");
+      if (result?.code === "email_not_verified") {
+        const message = "Conta não verificada. Verifique seu email para continuar.";
+        setError(message);
+        toast.error(message);
+      } else {
+        setError("Email ou senha inválidos");
+      }
       return;
     }
 

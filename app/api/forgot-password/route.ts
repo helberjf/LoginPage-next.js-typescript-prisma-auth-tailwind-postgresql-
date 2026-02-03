@@ -80,8 +80,14 @@ export async function POST(req: Request) {
   });
 
   // 7️⃣ Enviar email
+  const origin = new URL(req.url).origin;
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    process.env.NEXTAUTH_URL ??
+    origin;
+
   const resetUrl =
-    `${process.env.NEXT_PUBLIC_APP_URL}/reset/${rawToken}?email=${encodeURIComponent(email)}`;
+    `${baseUrl}/reset/${rawToken}?email=${encodeURIComponent(email)}`;
 
 
   try {

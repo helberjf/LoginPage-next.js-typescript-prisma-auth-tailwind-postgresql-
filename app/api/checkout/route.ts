@@ -158,6 +158,10 @@ export async function POST(req: Request) {
     });
 
     const origin = new URL(req.url).origin;
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ??
+      process.env.NEXTAUTH_URL ??
+      origin;
     const accessToken = process.env.MP_ACCESS_TOKEN;
 
     if (!accessToken) {
@@ -169,7 +173,7 @@ export async function POST(req: Request) {
     }
 
     // Criar preferência do MercadoPago
-    const webhookUrl = process.env.MP_WEBHOOK_URL ?? `${origin}/api/mercadopago/webhook`;
+    const webhookUrl = process.env.MP_WEBHOOK_URL ?? `${baseUrl}/api/mercadopago/webhook`;
 
     // Preparar dados do pagador
     const payerData = isLogged && session?.user
@@ -213,10 +217,10 @@ export async function POST(req: Request) {
         }
       : undefined;
 
-    const successUrl = `${origin}/checkout/success?orderId=${order.id}`;
-    const failureUrl = `${origin}/checkout/failure?orderId=${order.id}`;
+    const successUrl = `${baseUrl}/checkout/success?orderId=${order.id}`;
+    const failureUrl = `${baseUrl}/checkout/failure?orderId=${order.id}`;
     const pendingUrl = successUrl;
-    const useAutoReturn = origin.startsWith("https://");
+    const useAutoReturn = baseUrl.startsWith("https://");
 
     const preferenceBody: Record<string, unknown> = {
       items: orderItems.map((item) => ({

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { sendEmail } from "@/lib/mailgun";
 import crypto from "crypto";
 import type { Prisma } from "@prisma/client";
 
@@ -49,6 +50,7 @@ function normalizeSignatureId(id: string): string {
   const isAlphanumeric = /^[a-z0-9]+$/i.test(id);
   return isAlphanumeric ? id.toLowerCase() : id;
 }
+import { rateLimit } from "@/lib/rate-limit";
 
 function timingSafeEqualHex(a: string, b: string): boolean {
   try {
@@ -62,6 +64,18 @@ function timingSafeEqualHex(a: string, b: string): boolean {
   }
 }
 
+function getClientIp(req: Request): string | null {
+  const forwardedFor = req.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    const ip = forwardedFor.split(",")[0]?.trim();
+    if (ip) return ip;
+  }
+
+  const realIp = req.headers.get("x-real-ip");
+  if (realIp) return realIp.trim();
+
+  return null;
+}
 function mapPaymentMethod(paymentTypeId: unknown): PaymentMethod {
   const t = typeof paymentTypeId === "string" ? paymentTypeId : "";
 
@@ -96,6 +110,41 @@ export async function POST(req: Request) {
   let body: MpWebhookBody = {};
 
   try {
+    // Rate limit (proteção contra abuso)
+    const rl = rateLimit(req, {
+      limit: 60,
+      windowMs: 60 * 1000,
+    });
+
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Muitas requisições" },
+        {
+          status: 429,
+          headers: rl.retryAfter
+            ? { "Retry-After": String(rl.retryAfter) }
+            : undefined,
+        }
+      );
+    }
+
+    // Allowlist de IPs (se configurado)
+    const allowlistRaw = process.env.MP_WEBHOOK_ALLOWED_IPS;
+    if (allowlistRaw) {
+      const allowlist = allowlistRaw
+        .split(",")
+        .map((ip) => ip.trim())
+        .filter(Boolean);
+
+      if (allowlist.length) {
+        const clientIp = getClientIp(req);
+        if (!clientIp || !allowlist.includes(clientIp)) {
+          console.warn("IP não autorizado:", clientIp ?? "unknown");
+          return NextResponse.json({ error: "IP não autorizado" }, { status: 403 });
+        }
+      }
+    }
+
     const accessToken = process.env.MP_ACCESS_TOKEN;
     if (!accessToken) {
       console.error("MP_ACCESS_TOKEN ausente");
@@ -169,13 +218,25 @@ export async function POST(req: Request) {
         ? (payload as Prisma.InputJsonValue)
         : {};
 
-    const event = await prisma.webhookEvent.create({
-      data: {
-        providerId,
-        payload: payloadJson,
-      },
-      select: { id: true },
-    });
+    const event = providerId
+      ? await prisma.webhookEvent.upsert({
+          where: { providerId },
+          create: {
+            providerId,
+            payload: payloadJson,
+          },
+          update: {
+            payload: payloadJson,
+          },
+          select: { id: true, processed: true },
+        })
+      : await prisma.webhookEvent.create({
+          data: {
+            providerId,
+            payload: payloadJson,
+          },
+          select: { id: true, processed: true },
+        });
 
     if (!providerId) {
       await prisma.webhookEvent.update({
@@ -186,15 +247,7 @@ export async function POST(req: Request) {
     }
 
     // Verificar se já foi processado (deduplicação)
-    const alreadyProcessed = await prisma.webhookEvent.findFirst({
-      where: {
-        providerId,
-        processed: true,
-      },
-      select: { id: true },
-    });
-
-    if (alreadyProcessed) {
+    if (event.processed) {
       console.log(`Webhook já processado: ${providerId}`);
       await prisma.webhookEvent.update({
         where: { id: event.id },
@@ -280,6 +333,39 @@ export async function POST(req: Request) {
       console.log(`Novo pagamento criado para ordem: ${orderId}`);
     }
 
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        status: true,
+        totalCents: true,
+        guestEmail: true,
+        guestFullName: true,
+        user: {
+          select: {
+            email: true,
+            name: true,
+          },
+        },
+        items: {
+          select: {
+            quantity: true,
+            priceCents: true,
+            product: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      console.warn("Pedido não encontrado para atualização:", orderId);
+      await prisma.webhookEvent.update({
+        where: { id: event.id },
+        data: { processed: true, processedAt: new Date() },
+      });
+      return NextResponse.json({ received: true, ignored: true });
+    }
+
     // Atualizar status do pedido
     await prisma.order.update({
       where: { id: orderId },
@@ -287,6 +373,39 @@ export async function POST(req: Request) {
     });
 
     console.log(`Pedido atualizado: ${orderId} -> ${orderStatus}`);
+
+    // Enviar email de confirmação somente na transição para PAID
+    if (orderStatus === "PAID" && order.status !== "PAID") {
+      const to = order.user?.email ?? order.guestEmail ?? "";
+      if (to) {
+        const itemsHtml = order.items
+          .map(
+            (item) =>
+              `<li>${item.product?.name ?? "Produto"} x${item.quantity} — R$ ${(item.priceCents / 100).toFixed(2)}</li>`
+          )
+          .join("");
+
+        const total = (order.totalCents / 100).toFixed(2);
+        const customerName = order.user?.name ?? order.guestFullName ?? "Cliente";
+
+        try {
+          await sendEmail({
+            to,
+            subject: "Pagamento aprovado - Pedido confirmado",
+            html: `
+              <p>Olá ${customerName},</p>
+              <p>Seu pagamento foi aprovado e o pedido foi confirmado.</p>
+              <p><strong>Pedido:</strong> ${order.id}</p>
+              <p><strong>Total:</strong> R$ ${total}</p>
+              <ul>${itemsHtml}</ul>
+              <p>Obrigado pela compra!</p>
+            `,
+          });
+        } catch (emailError) {
+          console.error("Erro ao enviar email de confirmação:", emailError);
+        }
+      }
+    }
 
     // Marcar evento como processado
     await prisma.webhookEvent.update({

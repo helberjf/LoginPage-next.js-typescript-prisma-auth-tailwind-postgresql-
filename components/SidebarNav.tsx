@@ -5,6 +5,7 @@ import {
   ShoppingCart,
   CreditCard,
   User,
+  Heart,
   Package,
   Boxes,
   Users,
@@ -36,6 +37,12 @@ export const SidebarNav: SidebarItem[] = [
     customerOnly: true,
   },
   {
+    label: "Meus favoritos",
+    href: "/wishlist",
+    icon: Heart,
+    customerOnly: true,
+  },
+  {
     label: "Pedidos",
     href: "/dashboard/orders",
     icon: ShoppingCart,
@@ -43,12 +50,6 @@ export const SidebarNav: SidebarItem[] = [
   },
   {
     label: "Agendamentos",
-    href: "/schedules",
-    icon: Calendar,
-    customerOnly: true,
-  },
-  {
-    label: "Pagamentos",
     href: "/dashboard/payments",
     icon: CreditCard,
     customerOnly: true,
@@ -88,12 +89,6 @@ export const SidebarNav: SidebarItem[] = [
     label: "Pedidos",
     href: "/dashboard/admin/orders",
     icon: ShoppingCart,
-    adminOnly: true,
-  },
-  {
-    label: "Agendamentos",
-    href: "/dashboard/admin/schedules",
-    icon: Calendar,
     adminOnly: true,
   },
   {

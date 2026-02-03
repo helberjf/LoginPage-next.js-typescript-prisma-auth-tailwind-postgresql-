@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Calendar, ChevronLeft, ChevronRight, Heart } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -103,6 +103,42 @@ export default function ProductCard({ product }: ProductCardProps) {
     }
   }
 
+  async function handleAddToWishlist(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isServiceSchedule) return;
+
+    try {
+      const res = await fetch("/api/wishlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId: product.id }),
+      });
+
+      if (res.status === 401) {
+        toast.error("Faça login para salvar na wishlist.");
+        return;
+      }
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        toast.error(data?.error ?? "Não foi possível salvar na wishlist.");
+        return;
+      }
+
+      toast.success(`${product.name} salvo na wishlist!`, {
+        action: {
+          label: "Ver wishlist",
+          onClick: () => {
+            router.push("/wishlist");
+          },
+        },
+      });
+    } catch {
+      toast.error("Erro ao salvar na wishlist.");
+    }
+  }
+
   function handlePreviousImage(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
@@ -129,6 +165,19 @@ export default function ProductCard({ product }: ProductCardProps) {
             e.currentTarget.src = PLACEHOLDER_IMAGE;
           }}
         />
+
+        {/* Wishlist */}
+        {!isServiceSchedule && (
+          <button
+            type="button"
+            onClick={handleAddToWishlist}
+            className="absolute right-2 top-2 bg-white/80 dark:bg-neutral-800/80 hover:bg-white dark:hover:bg-neutral-800 text-red-600 rounded-full p-2 shadow-md transition opacity-70 hover:opacity-100"
+            aria-label="Adicionar à wishlist"
+            title="Adicionar à wishlist"
+          >
+            <Heart size={16} />
+          </button>
+        )}
         
         {/* Navegação de imagens */}
         {hasMultipleImages && (

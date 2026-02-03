@@ -3,6 +3,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
+import { formatCpf, formatPhoneBR, onlyDigits } from "@/lib/utils/formatters";
 
 type PhoneCountry = "BR" | "US" | "OTHER";
 
@@ -29,10 +31,6 @@ type RegisterFormState = {
 function hasSurname(name: string) {
   const parts = name.trim().split(/\s+/);
   return parts.length >= 2 && parts.every(p => p.length >= 2);
-}
-
-function onlyDigits(v: string) {
-  return v.replace(/\D/g, "");
 }
 
 function toE164(country: PhoneCountry, digits: string): string {
@@ -91,7 +89,34 @@ export default function RegisterForm() {
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) {
-    setForm(p => ({ ...p, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+
+    setForm((p) => {
+      if (name === "cpf") {
+        return { ...p, cpf: formatCpf(value) };
+      }
+
+      if (name === "phoneCountry") {
+        const nextCountry = value as PhoneCountry;
+        const phoneDigits = onlyDigits(p.phone);
+        const nextPhone =
+          nextCountry === "BR"
+            ? formatPhoneBR(phoneDigits)
+            : phoneDigits;
+
+        return { ...p, phoneCountry: nextCountry, phone: nextPhone };
+      }
+
+      if (name === "phone") {
+        const nextPhone =
+          p.phoneCountry === "BR"
+            ? formatPhoneBR(value)
+            : value;
+        return { ...p, phone: nextPhone };
+      }
+
+      return { ...p, [name]: value };
+    });
   }
 
   async function fetchCep() {
@@ -168,7 +193,9 @@ export default function RegisterForm() {
       });
 
       if (res.status === 201) {
-        window.location.href = "/login";
+        toast.success("Conta criada! Verifique seu email para poder fazer login.");
+        const emailParam = encodeURIComponent(form.email);
+        window.location.href = `/register/success?email=${emailParam}`;
         return;
       }
 

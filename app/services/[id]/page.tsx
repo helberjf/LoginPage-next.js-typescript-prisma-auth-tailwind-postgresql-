@@ -14,6 +14,14 @@ import {
   Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type ServiceImage = {
   id: string;
@@ -51,6 +59,7 @@ export default function ServiceDetailPage({
   const [error, setError] = useState("");
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isBooking, setIsBooking] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -96,13 +105,16 @@ export default function ServiceDetailPage({
 
   const handleBookService = () => {
     if (!session?.user) {
-      router.push(`/login?redirect=/services/${service.id}`);
+      setAuthModalOpen(true);
       return;
     }
     setIsBooking(true);
     // Redirect to booking flow
     router.push(`/schedules?serviceId=${service.id}`);
   };
+
+  const loginUrl = `/login?redirect=${encodeURIComponent(`/services/${service.id}`)}`;
+  const registerUrl = `/register?redirect=${encodeURIComponent(`/services/${service.id}`)}`;
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-900">
@@ -242,6 +254,31 @@ export default function ServiceDetailPage({
 
           {/* Preço */}
           <div>
+
+          <Dialog open={authModalOpen} onOpenChange={setAuthModalOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Faça login para agendar</DialogTitle>
+                <DialogDescription>
+                  Para agendar um serviço, é necessário entrar ou criar uma conta.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Link
+                  href={registerUrl}
+                  className="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800/60"
+                >
+                  Criar conta
+                </Link>
+                <Link
+                  href={loginUrl}
+                  className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                >
+                  Entrar
+                </Link>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
             <p className="text-sm text-neutral-600">Preço</p>
             <p className="text-3xl font-bold text-blue-600">R$ {price}</p>
           </div>

@@ -1,7 +1,56 @@
-// app/contact/page.tsx
+"use client";
+
+import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Mail, Phone, MapPin, Send } from "lucide-react";
 
 export default function ContactPage() {
+  const searchParams = useSearchParams();
+  const initialValues = useMemo(() => ({
+    name: searchParams?.get("name") ?? "",
+    email: searchParams?.get("email") ?? "",
+    subject: searchParams?.get("subject") ?? "",
+    message: searchParams?.get("message") ?? "",
+  }), [searchParams]);
+
+  const [formData, setFormData] = useState(initialValues);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = event.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data?.error || "Erro ao enviar mensagem");
+      }
+
+      setSuccess(true);
+      setFormData({ name: "", email: "", subject: "", message: "" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro ao enviar mensagem";
+      setError(message);
+      setSuccess(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <section className="space-y-6 p-4 sm:p-6 max-w-4xl mx-auto">
       <div className="text-center space-y-2">
@@ -21,7 +70,7 @@ export default function ContactPage() {
             Envie sua mensagem
           </h2>
           
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
                 Nome completo
@@ -31,6 +80,8 @@ export default function ContactPage() {
                 id="name"
                 name="name"
                 required
+                value={formData.name}
+                onChange={handleChange}
                 className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-md bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Seu nome completo"
               />
@@ -45,6 +96,8 @@ export default function ContactPage() {
                 id="email"
                 name="email"
                 required
+                value={formData.email}
+                onChange={handleChange}
                 className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-md bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="seu@email.com"
               />
@@ -59,6 +112,8 @@ export default function ContactPage() {
                 id="subject"
                 name="subject"
                 required
+                value={formData.subject}
+                onChange={handleChange}
                 className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-md bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Assunto da mensagem"
               />
@@ -73,16 +128,30 @@ export default function ContactPage() {
                 name="message"
                 rows={5}
                 required
+                value={formData.message}
+                onChange={handleChange}
                 className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-md bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                 placeholder="Digite sua mensagem aqui..."
               />
             </div>
 
+            {success && (
+              <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                Mensagem enviada com sucesso! Em breve entraremos em contato.
+              </div>
+            )}
+            {error && (
+              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
             <button
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900"
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900 disabled:opacity-70"
             >
-              Enviar Mensagem
+              {loading ? "Enviando..." : "Enviar Mensagem"}
             </button>
           </form>
         </div>

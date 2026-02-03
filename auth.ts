@@ -1,6 +1,6 @@
 /* auth.ts */
 
-import NextAuth, { type NextAuthConfig } from "next-auth";
+import NextAuth, { type NextAuthConfig, CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
@@ -11,6 +11,13 @@ import { loginSchema } from "@/lib/auth/validation";
 
 export const authConfig: NextAuthConfig = {
   adapter: PrismaAdapter(prisma),
+
+  logger: {
+    error(code, ...message) {
+      if (code === "CredentialsSignin") return;
+      console.error(code, ...message);
+    },
+  },
 
   session: {
     strategy: "jwt",
@@ -44,6 +51,12 @@ export const authConfig: NextAuthConfig = {
 
         const user = await prisma.user.findUnique({
           where: { email },
+          include: {
+            accounts: {
+              where: { provider: "google" },
+              select: { id: true },
+            },
+          },
         });
 
         if (!user || !user.password) return null;
@@ -54,6 +67,14 @@ export const authConfig: NextAuthConfig = {
         );
 
         if (!passwordMatch) return null;
+
+        const isVerified = Boolean(user.emailVerified) || user.accounts.length > 0;
+        if (!isVerified) {
+          class EmailNotVerifiedError extends CredentialsSignin {
+            code = "email_not_verified";
+          }
+          throw new EmailNotVerifiedError();
+        }
 
         return {
           id: user.id,

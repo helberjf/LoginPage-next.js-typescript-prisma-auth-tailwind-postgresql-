@@ -11,6 +11,7 @@ import {
   Sparkles,
   Timer,
 } from "lucide-react";
+import UpcomingSchedules from "@/components/dashboard/UpcomingSchedules";
 
 /**
  * Dashboard do CUSTOMER
@@ -30,12 +31,15 @@ export default async function DashboardPage() {
   }
 
   const userId = session.user.id;
+  const now = new Date();
 
   const [
     totalOrders,
     paidOrders,
     totalSpent,
     lastOrder,
+    verificationInfo,
+    upcomingSchedules,
   ] = await Promise.all([
     prisma.order.count({
       where: { userId },
@@ -68,6 +72,47 @@ export default async function DashboardPage() {
         createdAt: true,
       },
     }),
+
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        emailVerified: true,
+        accounts: {
+          where: { provider: "google" },
+          select: { id: true },
+        },
+      },
+    }),
+    prisma.schedule.findMany({
+      where: {
+        userId,
+        startAt: {
+          gte: now,
+        },
+        status: {
+          in: ["PENDING", "CONFIRMED"],
+        },
+      },
+      orderBy: {
+        startAt: "asc",
+      },
+      take: 5,
+      select: {
+        id: true,
+        startAt: true,
+        status: true,
+        service: {
+          select: {
+            name: true,
+          },
+        },
+        employee: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    }),
   ]);
 
   const totalSpentValue = totalSpent._sum.totalCents
@@ -79,14 +124,44 @@ export default async function DashboardPage() {
     : "—";
 
   const firstName = session.user.name?.split(" ")[0] ?? "Olá";
+  const isVerified = Boolean(
+    verificationInfo?.emailVerified ||
+      (verificationInfo?.accounts?.length ?? 0) > 0
+  );
+
+  const scheduleStatusLabel: Record<string, string> = {
+    PENDING: "Pendente",
+    CONFIRMED: "Confirmado",
+    CANCELLED: "Cancelado",
+    COMPLETED: "Concluído",
+    NO_SHOW: "Não compareceu",
+  };
+
+  const scheduleStatusClass: Record<string, string> = {
+    PENDING: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
+    CONFIRMED: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
+    CANCELLED: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300",
+    COMPLETED: "bg-slate-100 text-slate-700 dark:bg-slate-800/60 dark:text-slate-200",
+    NO_SHOW: "bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300",
+  };
 
   return (
     <div className="space-y-8">
       {/* Hero */}
       <header className="rounded-2xl border bg-white/80 dark:bg-neutral-950/80 backdrop-blur p-5 sm:p-6 shadow-sm">
-        <div className="flex items-center gap-3 text-sm text-blue-600 dark:text-blue-400 font-semibold">
+        <div className="flex flex-wrap items-center gap-3 text-sm text-blue-600 dark:text-blue-400 font-semibold">
           <Sparkles className="w-4 h-4" />
           <span>Resumo da conta</span>
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+              isVerified
+                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+            }`}
+          >
+            <BadgeCheck className="w-3 h-3" />
+            {isVerified ? "Conta verificada" : "Conta pendente"}
+          </span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold mt-2 text-neutral-900 dark:text-neutral-50">
           {firstName}, confira seu painel
@@ -94,6 +169,20 @@ export default async function DashboardPage() {
         <p className="text-neutral-500 mt-1">
           Acompanhe pedidos, pagamentos e suas próximas compras.
         </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link
+            href="/products"
+            className="inline-flex items-center justify-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+          >
+            Ver produtos
+          </Link>
+          <Link
+            href="/services"
+            className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+          >
+            Agendar serviços
+          </Link>
+        </div>
       </header>
 
       {/* Stats */}
@@ -154,6 +243,28 @@ export default async function DashboardPage() {
           </div>
         </section>
       )}
+
+      {/* Próximos agendamentos */}
+      <section className="rounded-2xl border bg-white dark:bg-neutral-900 p-5 sm:p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold">Próximos agendamentos</h2>
+          <Link
+            href="/services"
+            className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+          >
+            Agendar novo
+          </Link>
+        </div>
+
+        <UpcomingSchedules
+          schedules={upcomingSchedules.map((schedule) => ({
+            ...schedule,
+            startAt: schedule.startAt.toISOString(),
+          }))}
+          statusLabel={scheduleStatusLabel}
+          statusClass={scheduleStatusClass}
+        />
+      </section>
 
       {/* Ações rápidas */}
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">

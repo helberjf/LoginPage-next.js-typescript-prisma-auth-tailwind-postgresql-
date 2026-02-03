@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth();
     const body = await request.json();
 
     const {
@@ -31,9 +33,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validar data e hora
-    const selectedDate = new Date(date);
-    if (isNaN(selectedDate.getTime())) {
+    // Validar data e hora (parse local date)
+    const [year, month, day] = String(date).split("-").map(Number);
+    const selectedDate = new Date(year, (month ?? 1) - 1, day ?? 1);
+    if (!year || !month || !day || isNaN(selectedDate.getTime())) {
       return NextResponse.json(
         { error: "Data inválida" },
         { status: 400 }
@@ -121,13 +124,14 @@ export async function POST(request: NextRequest) {
         startAt: selectedDate,
         endAt: endTime,
         employeeId: employeeId || null,
-        userId: null,
+        userId: session?.user?.id ?? null,
         guestName: guestName || null,
         guestEmail: guestEmail || null,
         guestPhone: guestPhone || null,
         notes: notes || null,
         type: "SERVICE",
         status: "PENDING",
+        createdByUserId: session?.user?.id ?? null,
         createdByRole: "CUSTOMER",
       },
       include: {

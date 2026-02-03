@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import SidebarMobile from "@/components/SidebarMobile";
+import ThemeSwitcher from "@/components/ThemeSwitcher";
 import { adminSidebar, customerSidebar, publicSidebar, staffSidebar } from "@/sidebar.config";
 
 export default function PublicSidebarShell() {
@@ -25,7 +26,7 @@ export default function PublicSidebarShell() {
 
   return (
     <>
-      <SidebarMobile items={items} />
+      <SidebarMobile items={items} footer={<ThemeSwitcher />} />
     </>
   );
 }

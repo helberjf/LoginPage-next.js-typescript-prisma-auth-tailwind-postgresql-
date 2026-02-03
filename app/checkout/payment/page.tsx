@@ -8,6 +8,7 @@ import Link from "next/link";
 import { ShieldCheck, ArrowLeft } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { validateCpf } from "@/lib/validators/validateCpf";
+import { formatCpf, formatPhoneBR, onlyDigits } from "@/lib/utils/formatters";
 
 type FormState = {
   name: string;
@@ -36,10 +37,6 @@ type CepResponse = {
   state: string;
 };
 
-function onlyDigits(v: string) {
-  return v.replace(/\D/g, "");
-}
-
 function hasSurname(name: string) {
   const parts = name.trim().split(/\s+/);
   return parts.length >= 2 && parts.every((p) => p.length >= 2);
@@ -57,7 +54,9 @@ function CheckoutPaymentContent() {
   const [cepLoading, setCepLoading] = useState(false);
   const [cepError, setCepError] = useState<string | null>(null);
 
-  const productId = searchParams.get('productId');
+  const productId = searchParams.get("productId");
+  const forceBuyerInfo = Boolean(productId);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
   const [form, setForm] = useState<FormState>({
     name: "",
@@ -76,7 +75,7 @@ function CheckoutPaymentContent() {
   const zipDigits = onlyDigits(form.zipCode);
   const cepReady = zipDigits.length === 8 && !cepError;
 
-  const formValid = session
+  const formValid = session && !forceBuyerInfo
     ? true
     : hasSurname(form.name) &&
       form.email.trim().length > 3 &&
@@ -105,9 +104,57 @@ function CheckoutPaymentContent() {
     }
   }, [items, router, productId]);
 
+  useEffect(() => {
+    if (!forceBuyerInfo || !session?.user) return;
+    if (!profileLoaded) {
+      (async () => {
+        try {
+          const res = await fetch("/api/me");
+          if (!res.ok) return;
+          const data = await res.json();
+          const user = data?.user;
+          const address = user?.addresses?.[0];
+
+          const rawPhone = String(user?.profile?.phone ?? "");
+          let phoneDigits = onlyDigits(rawPhone);
+          if (phoneDigits.startsWith("55") && phoneDigits.length > 11) {
+            phoneDigits = phoneDigits.slice(2);
+          }
+
+          setForm((prev) => ({
+            ...prev,
+            name: prev.name || user?.name || session.user?.name || "",
+            email: prev.email || user?.email || session.user?.email || "",
+            cpf: prev.cpf || formatCpf(String(user?.profile?.cpf ?? "")),
+            phone: prev.phone || formatPhoneBR(phoneDigits),
+            zipCode: prev.zipCode || String(address?.zipCode ?? ""),
+            street: prev.street || String(address?.street ?? ""),
+            number: prev.number || String(address?.number ?? ""),
+            complement: prev.complement || String(address?.complement ?? ""),
+            district: prev.district || String(address?.district ?? ""),
+            city: prev.city || String(address?.city ?? ""),
+            state: prev.state || String(address?.state ?? ""),
+          }));
+        } finally {
+          setProfileLoaded(true);
+        }
+      })();
+    }
+  }, [forceBuyerInfo, session, profileLoaded]);
+
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target;
-    setForm((p) => ({ ...p, [name]: value }));
+    setForm((p) => {
+      if (name === "cpf") {
+        return { ...p, cpf: formatCpf(value) };
+      }
+
+      if (name === "phone") {
+        return { ...p, phone: formatPhoneBR(value) };
+      }
+
+      return { ...p, [name]: value };
+    });
   }
 
   async function fetchCep() {
@@ -256,7 +303,7 @@ function CheckoutPaymentContent() {
                 Pagamento seguro via MercadoPago
               </div>
 
-              {session ? (
+              {session && !forceBuyerInfo ? (
                 <div className="space-y-4">
                   <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
                     <p className="text-sm text-green-800 dark:text-green-200">

@@ -104,3 +104,89 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Erro ao criar agendamento" }, { status: 500 });
   }
 }
+
+export async function PATCH(req: Request) {
+  try {
+    const admin = await requireAdmin();
+    if (!admin.ok) return admin.response;
+
+    const body = await req.json();
+    const {
+      id,
+      startAt,
+      endAt,
+      status,
+      employeeId,
+      notes,
+    } = body ?? {};
+
+    if (!id) {
+      return NextResponse.json({ error: "id é obrigatório" }, { status: 400 });
+    }
+
+    const updateData: {
+      startAt?: Date;
+      endAt?: Date;
+      status?: string;
+      employeeId?: string | null;
+      notes?: string | null;
+    } = {};
+
+    if ((startAt && !endAt) || (!startAt && endAt)) {
+      return NextResponse.json(
+        { error: "startAt e endAt devem ser enviados juntos" },
+        { status: 400 }
+      );
+    }
+
+    if (startAt && endAt) {
+      const start = new Date(startAt);
+      const end = new Date(endAt);
+
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        return NextResponse.json({ error: "Datas inválidas" }, { status: 400 });
+      }
+
+      if (end <= start) {
+        return NextResponse.json(
+          { error: "endAt deve ser maior que startAt" },
+          { status: 400 }
+        );
+      }
+
+      updateData.startAt = start;
+      updateData.endAt = end;
+    }
+
+    if (typeof status === "string" && status.length > 0) {
+      updateData.status = status;
+    }
+
+    if (typeof employeeId !== "undefined") {
+      updateData.employeeId = employeeId || null;
+    }
+
+    if (typeof notes !== "undefined") {
+      updateData.notes = notes || null;
+    }
+
+    const updated = await prisma.schedule.update({
+      where: { id },
+      data: updateData,
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        employee: { select: { id: true, name: true, email: true } },
+        service: { select: { id: true, name: true } },
+        order: { select: { id: true, status: true } },
+      },
+    });
+
+    return NextResponse.json(updated);
+  } catch (error) {
+    console.error("Erro ao atualizar agendamento:", error);
+    return NextResponse.json(
+      { error: "Erro ao atualizar agendamento" },
+      { status: 500 }
+    );
+  }
+}

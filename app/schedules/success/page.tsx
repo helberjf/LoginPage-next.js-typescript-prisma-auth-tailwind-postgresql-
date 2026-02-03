@@ -27,7 +27,8 @@ export default function ScheduleSuccessPage() {
 
         {/* Description */}
         <p className="text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
-          Seu agendamento foi enviado com sucesso. Entraremos em contato em breve para confirmar os detalhes e orientações específicas.
+          Seu agendamento foi registrado com sucesso. Não é necessário pagar agora.
+          Entraremos em contato para confirmar os detalhes.
         </p>
 
         {/* Next Steps */}
@@ -52,7 +53,7 @@ export default function ScheduleSuccessPage() {
               <div className="w-6 h-6 bg-blue-200 dark:bg-blue-800 rounded-full flex items-center justify-center">
                 <Calendar className="w-3 h-3" />
               </div>
-              <span>Agendamento adicionado ao sistema</span>
+              <span>Pagamento do serviço: 50% no dia</span>
             </div>
           </div>
         </div>

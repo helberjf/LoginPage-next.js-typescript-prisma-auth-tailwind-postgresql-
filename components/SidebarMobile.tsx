@@ -9,14 +9,18 @@ import {
   ClipboardList,
   CreditCard,
   Grid3X3,
+  Heart,
   Home,
   LayoutDashboard,
   Bell,
+  Mail,
+  MessageCircle,
   Package,
   Search,
   ShoppingCart,
   User,
   Users,
+  Warehouse,
   X,
   Wrench,
   Box,
@@ -40,8 +44,11 @@ export default function SidebarMobile({ items, footer }: SidebarMobileProps) {
     "clipboard-list": ClipboardList,
     "credit-card": CreditCard,
     "grid": Grid3X3,
+    "heart": Heart,
     "home": Home,
     "layout": LayoutDashboard,
+    "mail": Mail,
+    "whatsapp": MessageCircle,
     "bell": Bell,
     "box": Box,
     "package": Package,
@@ -49,6 +56,7 @@ export default function SidebarMobile({ items, footer }: SidebarMobileProps) {
     "shopping-cart": ShoppingCart,
     "user": User,
     "users": Users,
+    "warehouse": Warehouse,
     "wrench": Wrench,
   };
 
@@ -85,13 +93,14 @@ export default function SidebarMobile({ items, footer }: SidebarMobileProps) {
                 </button>
               </header>
 
-              <nav className="flex-1 flex flex-col gap-1 text-sm overflow-y-auto pr-1">
+              <nav className="flex-1 flex flex-col gap-1 text-sm overflow-y-auto pr-1 pb-4">
                 {items.map(({ label, href, icon }) => {
                   const active = pathname === href || pathname.startsWith(`${href}/`);
                   const Icon = iconMap[icon] ?? Package;
+                  const isExternal = href.startsWith("http");
 
                   return (
-                    <Link key={href} href={href} onClick={closeSidebar} className={active ? "flex items-center gap-3 px-3 py-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 font-medium transition" : "flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"}>
+                    <Link key={href} href={href} onClick={closeSidebar} target={isExternal ? "_blank" : undefined} rel={isExternal ? "noreferrer" : undefined} className={active ? "flex items-center gap-3 px-3 py-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 font-medium transition" : "flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"}>
                       <Icon size={16} />
                       <span className="truncate">{label}</span>
                     </Link>
@@ -100,7 +109,7 @@ export default function SidebarMobile({ items, footer }: SidebarMobileProps) {
               </nav>
 
               {footer && (
-                <footer className="pt-4 mt-4 border-t border-neutral-200 dark:border-neutral-800 space-y-2">
+                <footer className="pt-4 border-t border-neutral-200 dark:border-neutral-800 space-y-2">
                   {footer}
                 </footer>
               )}

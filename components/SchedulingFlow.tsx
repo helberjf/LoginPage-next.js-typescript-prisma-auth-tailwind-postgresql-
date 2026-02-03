@@ -1,22 +1,28 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { format, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar as CalendarIcon, Clock, User, Sparkles, ArrowRight, AlertCircle } from "lucide-react";
+import { Clock, User, Sparkles, ArrowRight, AlertCircle } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { formatCpf, formatPhoneBR, onlyDigits } from "@/lib/utils/formatters";
+import { validateCpf } from "@/lib/validators/validateCpf";
 
 interface Service {
   id: string;
@@ -30,36 +36,78 @@ interface AvailableTime {
   timestamp: number;
 }
 
+interface TimeSlot extends AvailableTime {
+  available: boolean;
+}
+
+interface Employee {
+  id: string;
+  name: string | null;
+}
+
 interface ScheduleFormData {
   name: string;
   email: string;
+  cpf: string;
   phone: string;
   serviceId: string;
+  employeeId: string;
   date: Date | undefined;
   time: string;
 }
 
 type Step = "service" | "datetime" | "personal" | "review" | "loading";
 
-export default function SchedulingFlow() {
+type SchedulingFlowProps = {
+  prefill?: {
+    name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    cpf?: string | null;
+  };
+  isGoogleAccount?: boolean;
+};
+
+export default function SchedulingFlow({ prefill, isGoogleAccount }: SchedulingFlowProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: session } = useSession();
   const [step, setStep] = useState<Step>("service");
   const [loading, setLoading] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
-  const [availableTimes, setAvailableTimes] = useState<AvailableTime[]>([]);
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [loadingTimes, setLoadingTimes] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(false);
+  const [isUnavailableDialogOpen, setIsUnavailableDialogOpen] = useState(false);
+  const [unavailableDialogMessage, setUnavailableDialogMessage] = useState(
+    "O horário selecionado não está mais disponível. Escolha outro horário."
+  );
 
   const [formData, setFormData] = useState<ScheduleFormData>({
     name: "",
     email: "",
+    cpf: "",
     phone: "",
     serviceId: "",
+    employeeId: "",
     date: undefined,
     time: "",
   });
+
+  useEffect(() => {
+    if (!session?.user || isGoogleAccount) return;
+
+    setFormData((prev) => ({
+      ...prev,
+      name: prev.name || prefill?.name || session.user?.name || "",
+      email: prev.email || prefill?.email || session.user?.email || "",
+      phone: prev.phone || (prefill?.phone ? formatPhoneBR(prefill.phone) : ""),
+      cpf: prev.cpf || (prefill?.cpf ? formatCpf(prefill.cpf) : ""),
+    }));
+  }, [session, prefill, isGoogleAccount]);
 
   const preselectedServiceId = searchParams?.get("serviceId") ?? "";
 
@@ -87,6 +135,27 @@ export default function SchedulingFlow() {
   }, []);
 
   useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        setLoadingEmployees(true);
+        const response = await fetch("/api/schedules/employees");
+        if (!response.ok) {
+          throw new Error("Erro ao carregar profissionais");
+        }
+        const data = await response.json();
+        setEmployees(Array.isArray(data.employees) ? data.employees : []);
+      } catch (err) {
+        console.error("Erro ao carregar profissionais:", err);
+        setEmployees([]);
+      } finally {
+        setLoadingEmployees(false);
+      }
+    };
+
+    fetchEmployees();
+  }, []);
+
+  useEffect(() => {
     if (!preselectedServiceId || services.length === 0) return;
     const found = services.find((s) => s.id === preselectedServiceId);
     if (!found) return;
@@ -104,6 +173,11 @@ export default function SchedulingFlow() {
     return services.find((s) => s.id === formData.serviceId);
   }, [formData.serviceId, services]);
 
+  const selectedEmployee = useMemo(() => {
+    if (!formData.employeeId) return null;
+    return employees.find((employee) => employee.id === formData.employeeId) ?? null;
+  }, [employees, formData.employeeId]);
+
   // STEP 1: Service Selection
   const handleServiceSelect = (serviceId: string) => {
     setFormData((prev) => ({
@@ -112,7 +186,7 @@ export default function SchedulingFlow() {
       date: undefined,
       time: "",
     }));
-    setAvailableTimes([]);
+    setTimeSlots([]);
     setError(null);
     setStep("datetime");
   };
@@ -130,25 +204,51 @@ export default function SchedulingFlow() {
     await fetchAvailableTimes(date);
   };
 
-  const fetchAvailableTimes = async (date: Date) => {
+  const fetchAvailableTimes = async (date: Date, employeeIdOverride?: string) => {
     try {
       setLoadingTimes(true);
       setError(null);
-      setAvailableTimes([]);
+      setTimeSlots([]);
 
       const dateStr = format(date, "yyyy-MM-dd");
+      const employeeId = employeeIdOverride ?? formData.employeeId;
+      const params = new URLSearchParams({
+        serviceId: formData.serviceId,
+        date: dateStr,
+      });
+      if (employeeId) {
+        params.append("employeeId", employeeId);
+      }
+
       const response = await fetch(
-        `/api/schedules/available-times?serviceId=${formData.serviceId}&date=${dateStr}`
+        `/api/schedules/available-times?${params.toString()}`
       );
 
       if (!response.ok) {
-        throw new Error("Erro ao buscar horários disponíveis");
+        let errorMessage = "Erro ao buscar horários disponíveis";
+        try {
+          const errorData = await response.json();
+          if (typeof errorData?.error === "string" && errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch (parseError) {
+          console.error("Erro ao interpretar resposta:", parseError);
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
-      setAvailableTimes(data.availableTimes || []);
+      const available = Array.isArray(data.availableTimes) ? data.availableTimes : [];
+      const slots = Array.isArray(data.timeSlots) ? data.timeSlots : [];
 
-      if (data.availableTimes.length === 0) {
+      const normalizedSlots = slots.length
+        ? slots
+        : available.map((slot: AvailableTime) => ({ ...slot, available: true }));
+
+      setTimeSlots(normalizedSlots);
+
+      const hasAvailable = normalizedSlots.some((slot) => slot.available);
+      if (!hasAvailable || normalizedSlots.length === 0) {
         setError("Nenhum horário disponível para este dia");
       }
     } catch (err) {
@@ -168,16 +268,37 @@ export default function SchedulingFlow() {
     setStep("personal");
   };
 
+  const handleEmployeeChange = (value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      employeeId: value,
+      time: "",
+    }));
+    setTimeSlots([]);
+    setError(null);
+
+    if (formData.date) {
+      fetchAvailableTimes(formData.date, value);
+    }
+  };
+
   // STEP 3: Personal Information
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     if (name === "phone") {
-      const digitsOnly = value.replace(/\D/g, "").slice(0, 11);
       setFormData((prev) => ({
         ...prev,
-        phone: digitsOnly,
+        phone: formatPhoneBR(value),
+      }));
+      return;
+    }
+
+    if (name === "cpf") {
+      setFormData((prev) => ({
+        ...prev,
+        cpf: formatCpf(value),
       }));
       return;
     }
@@ -190,10 +311,11 @@ export default function SchedulingFlow() {
   const isPersonalInfoValid = useMemo(() => {
     const nameValid = formData.name.trim().length >= 3;
     const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email);
-    const phoneValid = /^\d{10,11}$/.test(formData.phone);
+    const phoneValid = /^\d{10,11}$/.test(onlyDigits(formData.phone));
+    const cpfValid = validateCpf(formData.cpf);
 
-    return nameValid && emailValid && phoneValid;
-  }, [formData.name, formData.email, formData.phone]);
+    return nameValid && emailValid && phoneValid && cpfValid;
+  }, [formData.name, formData.email, formData.phone, formData.cpf]);
 
   const handleNextToReview = () => {
     if (isPersonalInfoValid) {
@@ -223,42 +345,75 @@ export default function SchedulingFlow() {
           serviceId: formData.serviceId,
           date: format(formData.date, "yyyy-MM-dd"),
           time: formData.time,
+          employeeId: formData.employeeId || undefined,
           guestName: formData.name,
           guestEmail: formData.email,
-          guestPhone: formData.phone,
-          notes: "",
+          guestPhone: onlyDigits(formData.phone),
+          notes: formData.cpf ? `CPF: ${onlyDigits(formData.cpf)}` : "",
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Erro ao criar agendamento");
+        const errorMessage = data?.error || "Erro ao criar agendamento";
+        if (
+          response.status === 409 ||
+          errorMessage.toLowerCase().includes("horário não está mais disponível")
+        ) {
+          setUnavailableDialogMessage(
+            "O horário selecionado não está mais disponível. Escolha outro horário."
+          );
+          setIsUnavailableDialogOpen(true);
+          setStep("datetime");
+          return;
+        }
+        throw new Error(errorMessage);
       }
 
       const { schedule } = data;
 
       toast.success("Agendamento criado com sucesso!");
 
-      // REDIRECIONAR PARA CHECKOUT
-      router.push(
-        `/checkout/payment?productId=${formData.serviceId}&scheduleId=${schedule.id}`
-      );
+      // REDIRECIONAR PARA SUCESSO (SEM PAGAMENTO)
+      router.push(`/schedules/success?scheduleId=${schedule.id}`);
     } catch (err) {
       const errorMsg =
         err instanceof Error ? err.message : "Erro ao agendar";
       console.error("Erro:", err);
       setError(errorMsg);
-      toast.error(errorMsg);
+      if (!errorMsg.toLowerCase().includes("horário não está mais disponível")) {
+        toast.error(errorMsg);
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  const unavailableDialog = (
+    <Dialog
+      open={isUnavailableDialogOpen}
+      onOpenChange={setIsUnavailableDialogOpen}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Horário indisponível</DialogTitle>
+          <DialogDescription>{unavailableDialogMessage}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button onClick={() => setIsUnavailableDialogOpen(false)}>
+            Ok, escolher outro
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   // Renderização por step
   if (step === "service") {
     return (
       <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 py-8 sm:py-12 px-4">
+        {unavailableDialog}
         <div className="mx-auto max-w-5xl">
           {/* Header */}
           <div className="text-center mb-8 sm:mb-12">
@@ -316,6 +471,7 @@ export default function SchedulingFlow() {
   if (step === "datetime") {
     return (
       <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 py-8 sm:py-12 px-4">
+        {unavailableDialog}
         <div className="mx-auto max-w-5xl">
           {/* Progress */}
           <div className="mb-8 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
@@ -329,15 +485,52 @@ export default function SchedulingFlow() {
             <span className="text-blue-600 font-semibold">Data e Hora</span>
           </div>
 
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-4 sm:p-8">
-            <h2 className="text-xl sm:text-2xl font-bold mb-6 sm:mb-8 text-gray-900 dark:text-white">
-              Selecione data e horário para {selectedService?.name}
-            </h2>
+          <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-xl p-4 sm:p-8 border border-gray-100 dark:border-gray-800">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600 dark:text-blue-400">
+                  Agendamento
+                </p>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+                  Selecione data e horário
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  {selectedService?.name}
+                </p>
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 dark:bg-blue-900/20 px-3 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300">
+                <Clock className="w-3.5 h-3.5" />
+                {selectedService?.durationMins} min
+              </div>
+            </div>
+
+            <div className="mb-6 rounded-2xl border border-blue-100/80 dark:border-blue-900/40 bg-blue-50/40 dark:bg-blue-950/20 p-4">
+              <Label className="text-xs font-semibold uppercase tracking-[0.16em] mb-2 block text-blue-700 dark:text-blue-300">
+                Profissional
+              </Label>
+              <select
+                value={formData.employeeId}
+                onChange={(event) => handleEmployeeChange(event.target.value)}
+                className="w-full rounded-xl border border-blue-200 dark:border-blue-900/50 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 shadow-sm"
+              >
+                <option value="">Qualquer profissional</option>
+                {loadingEmployees && (
+                  <option value="" disabled>
+                    Carregando profissionais...
+                  </option>
+                )}
+                {employees.map((employee) => (
+                  <option key={employee.id} value={employee.id}>
+                    {employee.name ?? "Profissional"}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
               {/* Calendar */}
-              <div>
-                <Label className="text-lg font-semibold mb-4 block">
+              <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50/40 dark:bg-gray-950/40 p-4">
+                <Label className="text-xs font-semibold uppercase tracking-[0.16em] mb-3 block text-gray-700 dark:text-gray-300">
                   Data
                 </Label>
                 <div className="flex justify-center">
@@ -357,8 +550,8 @@ export default function SchedulingFlow() {
               </div>
 
               {/* Times */}
-              <div>
-                <Label className="text-lg font-semibold mb-4 block">
+              <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50/40 dark:bg-gray-950/40 p-4">
+                <Label className="text-xs font-semibold uppercase tracking-[0.16em] mb-3 block text-gray-700 dark:text-gray-300">
                   Horário
                 </Label>
 
@@ -380,17 +573,20 @@ export default function SchedulingFlow() {
                   </div>
                 )}
 
-                {!loadingTimes && availableTimes.length > 0 && (
+                {!loadingTimes && timeSlots.length > 0 && (
                   <div className="grid grid-cols-3 gap-2">
-                    {availableTimes.map((slot) => (
+                    {timeSlots.map((slot) => (
                       <button
                         key={slot.timestamp}
-                        onClick={() => handleTimeSelect(slot.time)}
+                        onClick={() => slot.available && handleTimeSelect(slot.time)}
+                        disabled={!slot.available}
                         className={cn(
-                          "p-3 rounded-lg border-2 font-medium transition-all",
+                          "p-3 rounded-xl border-2 text-sm font-semibold transition-all",
                           formData.time === slot.time
-                            ? "border-blue-600 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                            : "border-gray-200 dark:border-gray-700 hover:border-blue-300"
+                            ? "border-blue-600 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 shadow-sm"
+                            : slot.available
+                              ? "border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:bg-white dark:hover:bg-gray-900"
+                              : "border-dashed border-gray-300 dark:border-gray-700 text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800/60 cursor-not-allowed opacity-75 line-through"
                         )}
                       >
                         {slot.time}
@@ -399,8 +595,14 @@ export default function SchedulingFlow() {
                   </div>
                 )}
 
-                {!loadingTimes && availableTimes.length === 0 && !error && formData.date && (
-                  <div className="text-center py-8 text-gray-500">
+                {!loadingTimes && timeSlots.length > 0 && (
+                  <p className="mt-3 text-xs text-gray-500">
+                    Horários indisponíveis aparecem esmaecidos.
+                  </p>
+                )}
+
+                {!loadingTimes && timeSlots.length === 0 && !error && formData.date && (
+                  <div className="text-center py-8 text-sm text-gray-500">
                     Selecione uma data para ver horários disponíveis
                   </div>
                 )}
@@ -434,6 +636,7 @@ export default function SchedulingFlow() {
   if (step === "personal") {
     return (
       <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 py-8 sm:py-12 px-4">
+        {unavailableDialog}
         <div className="mx-auto max-w-5xl">
           {/* Progress */}
           <div className="mb-8 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
@@ -485,6 +688,20 @@ export default function SchedulingFlow() {
               </div>
 
               <div>
+                <Label htmlFor="cpf" className="mb-2 block">
+                  CPF
+                </Label>
+                <Input
+                  id="cpf"
+                  name="cpf"
+                  value={formData.cpf}
+                  onChange={handleInputChange}
+                  placeholder="000.000.000-00"
+                  className="h-11"
+                />
+              </div>
+
+              <div>
                 <Label htmlFor="phone" className="mb-2 block">
                   Telefone
                 </Label>
@@ -494,10 +711,7 @@ export default function SchedulingFlow() {
                   type="tel"
                   value={formData.phone}
                   onChange={handleInputChange}
-                  placeholder="11999999999"
-                  inputMode="numeric"
-                  pattern="\d*"
-                  maxLength={11}
+                  placeholder="(00) 00000-0000"
                   className="h-11"
                 />
               </div>
@@ -537,6 +751,7 @@ export default function SchedulingFlow() {
   if (step === "review") {
     return (
       <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 py-8 sm:py-12 px-4">
+        {unavailableDialog}
         <div className="mx-auto max-w-5xl">
           {/* Progress */}
           <div className="mb-8 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
@@ -585,11 +800,19 @@ export default function SchedulingFlow() {
                     <p>
                       <span className="font-medium">Nome:</span> {formData.name}
                     </p>
+                    {selectedEmployee && (
+                      <p>
+                        <span className="font-medium">Profissional:</span> {selectedEmployee.name ?? "Profissional"}
+                      </p>
+                    )}
                     <p>
                       <span className="font-medium">Email:</span> {formData.email}
                     </p>
                     <p>
                       <span className="font-medium">Telefone:</span> {formData.phone}
+                    </p>
+                    <p>
+                      <span className="font-medium">CPF:</span> {formData.cpf}
                     </p>
                   </div>
                 </div>
@@ -630,7 +853,7 @@ export default function SchedulingFlow() {
                     </>
                   ) : (
                     <>
-                      Ir para Pagamento
+                      Confirmar agendamento
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </>
                   )}
@@ -654,19 +877,19 @@ export default function SchedulingFlow() {
                   <span className="shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">
                     2
                   </span>
-                  <span>Clique em "Ir para Pagamento"</span>
+                  <span>Clique em &quot;Confirmar agendamento&quot;</span>
                 </li>
                 <li className="flex gap-3">
                   <span className="shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">
                     3
                   </span>
-                  <span>Complete o pagamento via MercadoPago</span>
+                  <span>Você receberá a confirmação do agendamento</span>
                 </li>
                 <li className="flex gap-3">
                   <span className="shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">
                     4
                   </span>
-                  <span>Agendamento automaticamente confirmado!</span>
+                  <span>O pagamento de 50% será no dia do atendimento</span>
                 </li>
               </ol>
             </div>

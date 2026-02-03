@@ -51,6 +51,8 @@ export default function Home() {
   const [categoryId, setCategoryId] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const role = session?.user?.role ?? "noUser";
+  const canShowProducts = role === "noUser" || role === "CUSTOMER";
 
   useEffect(() => {
     (async () => {
@@ -68,6 +70,10 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (role !== "noUser" && role !== "CUSTOMER") {
+      setProducts([]);
+      return;
+    }
     const params = new URLSearchParams();
     if (categoryId) params.append("categoryId", categoryId);
 
@@ -77,7 +83,7 @@ export default function Home() {
       .catch((error) => {
         console.error("Failed to load products:", error);
       });
-  }, [categoryId]);
+  }, [categoryId, role]);
 
   useEffect(() => {
     let lastY = window.scrollY;
@@ -182,56 +188,57 @@ export default function Home() {
         </div>
       </section>
 
-      {/* PRODUTOS */}
-      <section className="max-w-7xl mx-auto space-y-3 sm:space-y-4 px-1 sm:px-0">
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-center justify-center">
-          <Link
-            href="/products"
-            className="flex-1 sm:flex-none text-center rounded-md bg-blue-600 px-3 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-blue-700"
-          >
-            Ver produtos
-          </Link>
-          <Link
-            href="/services"
-            className="flex-1 sm:flex-none text-center rounded-md bg-emerald-600 px-3 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-emerald-700"
-          >
-            Agendar serviços
-          </Link>
-        </div>
-
-        <header className="text-center space-y-1">
-          <div className="flex items-center justify-center gap-2">
-            <h2 className="text-xl font-bold">
-              Produtos disponíveis
-            </h2>
-            <select
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className="border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2 py-1 rounded text-sm text-neutral-900 dark:text-neutral-100"
-              disabled={loadingCategories}
+      {canShowProducts && (
+        <section className="max-w-7xl mx-auto space-y-3 sm:space-y-4 px-1 sm:px-0">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-center justify-center">
+            <Link
+              href="/products"
+              className="flex-1 sm:flex-none text-center rounded-md bg-blue-600 px-3 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-blue-700"
             >
-              <option value="">{loadingCategories ? "Carregando..." : "Todas as categorias"}</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.slug}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
+              Ver produtos
+            </Link>
+            <Link
+              href="/services"
+              className="flex-1 sm:flex-none text-center rounded-md bg-emerald-600 px-3 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-emerald-700"
+            >
+              Agendar serviços
+            </Link>
           </div>
-          <p className="text-neutral-500 text-sm">
-            Escolha e compre rapidamente
-          </p>
-        </header>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pb-8">
-          {products.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-            />
-          ))}
-        </div>
-      </section>
+          <header className="text-center space-y-1">
+            <div className="flex items-center justify-center gap-2">
+              <h2 className="text-xl font-bold">
+                Produtos disponíveis
+              </h2>
+              <select
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className="border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2 py-1 rounded text-sm text-neutral-900 dark:text-neutral-100"
+                disabled={loadingCategories}
+              >
+                <option value="">{loadingCategories ? "Carregando..." : "Todas as categorias"}</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.slug}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="text-neutral-500 text-sm">
+              Escolha e compre rapidamente
+            </p>
+          </header>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pb-8">
+            {products.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+              />
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   );
 }

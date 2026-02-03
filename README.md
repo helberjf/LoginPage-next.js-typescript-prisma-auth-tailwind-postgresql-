@@ -354,6 +354,49 @@ MP_WEBHOOK_URL - URL do webhook (opcional, usa origem da requisição)
 🎯 O webhook é crucial para atualizar o status dos pagamentos automaticamente quando o Mercado Pago notifica sobre mudanças no status do pagamento.
 
 
+## 📝 Variáveis de Ambiente
+
+### Obrigatórias
+
+- `MP_ACCESS_TOKEN`: Token de acesso do Mercado Pago (Production ou Sandbox)
+
+### Opcionais
+
+- `MP_INTEGRATOR_ID`: ID do integrador (já configurado como `dev_24c65fb163bf11ea96500242ac130004` no código)
+
+- `MP_BACK_URL_SUCCESS`: URL de redirecionamento após pagamento aprovado
+- `MP_BACK_URL_FAILURE`: URL de redirecionamento após pagamento recusado
+- `MP_BACK_URL_PENDING`: URL de redirecionamento para pagamento pendente
+- `MP_NOTIFICATION_URL`: URL do webhook para notificações
+- `MP_MAX_INSTALLMENTS`: Número máximo de parcelas (padrão: 1)
+
+## 🔑 Obter Credenciais do Mercado Pago
+
+1. Acesse [mercadopago.com.br](https://www.mercadopago.com.br)
+2. Faça login na sua conta
+3. Vá em [Desenvolvedores](https://www.mercadopago.com.br/developers)
+4. Crie uma aplicação
+5. Copie o **Access Token** (Production ou Test)
+
+## 🧪 Testar Pagamentos
+
+### Ambiente de Teste (Sandbox)
+
+Use credenciais de teste do Mercado Pago para testar sem realizar pagamentos reais.
+
+### Cartões de Teste
+
+- **Aprovado**: 5031 4332 1540 6351
+- **Recusado**: 5031 4332 1540 6352
+- CVV: 123
+- Data: 11/30
+- Nome: APRO Demo
+- Email: 
+- CPF: 12345678909
+- Usuario Teste: TESTUSER5576313915996878460
+- Senha: eRvDcIrPT0
+- Email: test_user_5576313915996878469@testuser.com
+
 
 ### Produção
 Para produção, certifique-se de:

@@ -8,22 +8,36 @@ type PageProps = {
         paymentId?: string;
         status?: string;
         merchantOrderId?: string;
+        external_reference?: string;
+        externalReference?: string;
+        preference_id?: string;
+        preferenceId?: string;
       }>
     | {
         orderId?: string;
         paymentId?: string;
         status?: string;
         merchantOrderId?: string;
+        external_reference?: string;
+        externalReference?: string;
+        preference_id?: string;
+        preferenceId?: string;
       };
 };
 
 export default async function CheckoutSuccessPage({ searchParams }: PageProps) {
   const resolvedSearchParams = await Promise.resolve(searchParams);
 
-  const orderId = resolvedSearchParams?.orderId;
+  const orderId =
+    resolvedSearchParams?.orderId ??
+    resolvedSearchParams?.external_reference ??
+    resolvedSearchParams?.externalReference;
   const paymentId = resolvedSearchParams?.paymentId;
   const status = resolvedSearchParams?.status;
   const merchantOrderId = resolvedSearchParams?.merchantOrderId;
+  const preferenceId =
+    resolvedSearchParams?.preference_id ??
+    resolvedSearchParams?.preferenceId;
 
   return (
     <main className="min-h-screen bg-neutral-50 dark:bg-neutral-950 p-6">
@@ -48,7 +62,7 @@ export default async function CheckoutSuccessPage({ searchParams }: PageProps) {
           </div>
         ) : null}
 
-        {paymentId || status || merchantOrderId ? (
+        {paymentId || status || merchantOrderId || preferenceId ? (
           <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm dark:border-neutral-800 dark:bg-neutral-800/30 space-y-1">
             {paymentId ? (
               <div>
@@ -73,6 +87,15 @@ export default async function CheckoutSuccessPage({ searchParams }: PageProps) {
                 <span className="text-neutral-600 dark:text-neutral-400">MerchantOrderId:</span>{" "}
                 <span className="font-medium text-neutral-900 dark:text-neutral-100">
                   {merchantOrderId}
+                </span>
+              </div>
+            ) : null}
+
+            {preferenceId ? (
+              <div>
+                <span className="text-neutral-600 dark:text-neutral-400">PreferenceId:</span>{" "}
+                <span className="font-medium text-neutral-900 dark:text-neutral-100">
+                  {preferenceId}
                 </span>
               </div>
             ) : null}
