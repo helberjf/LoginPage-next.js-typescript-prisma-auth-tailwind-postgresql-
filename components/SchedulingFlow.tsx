@@ -247,7 +247,7 @@ export default function SchedulingFlow({ prefill, isGoogleAccount }: SchedulingF
 
       setTimeSlots(normalizedSlots);
 
-      const hasAvailable = normalizedSlots.some((slot) => slot.available);
+      const hasAvailable = normalizedSlots.some((slot: TimeSlot) => slot.available);
       if (!hasAvailable || normalizedSlots.length === 0) {
         setError("Nenhum horário disponível para este dia");
       }
