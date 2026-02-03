@@ -40,6 +40,13 @@ export async function GET(req: Request) {
         ...(employeeId === "unassigned" ? { employeeId: null } : {}),
       },
       include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
         employee: {
           select: {
             id: true,
