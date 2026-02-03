@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import { Prisma, ScheduleStatus } from "@prisma/client";
 
 export async function GET(req: Request) {
   const admin = await requireAdmin();
@@ -124,13 +125,7 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "id é obrigatório" }, { status: 400 });
     }
 
-    const updateData: {
-      startAt?: Date;
-      endAt?: Date;
-      status?: string;
-      employeeId?: string | null;
-      notes?: string | null;
-    } = {};
+    const updateData: Prisma.ScheduleUpdateInput = {};
 
     if ((startAt && !endAt) || (!startAt && endAt)) {
       return NextResponse.json(
@@ -159,11 +154,22 @@ export async function PATCH(req: Request) {
     }
 
     if (typeof status === "string" && status.length > 0) {
-      updateData.status = status;
+      const allowedStatuses = new Set<ScheduleStatus>([
+        "PENDING",
+        "CONFIRMED",
+        "CANCELLED",
+        "COMPLETED",
+        "NO_SHOW",
+      ]);
+      if (allowedStatuses.has(status as ScheduleStatus)) {
+        updateData.status = status as ScheduleStatus;
+      }
     }
 
     if (typeof employeeId !== "undefined") {
-      updateData.employeeId = employeeId || null;
+      updateData.employee = employeeId
+        ? { connect: { id: employeeId } }
+        : { disconnect: true };
     }
 
     if (typeof notes !== "undefined") {
