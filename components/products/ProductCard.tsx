@@ -231,9 +231,20 @@ export default function ProductCard({ product }: ProductCardProps) {
           ⭐ {(product.ratingAverage ?? 0).toFixed(1)} • {product.salesCount ?? 0} {isServiceSchedule ? "atendimentos" : "vendidos"}
         </div>
 
-        <div className="text-sm font-semibold">
-          R$ {(finalPrice / 100).toFixed(2)}
-        </div>
+        {product.discountPercent && product.discountPercent > 0 ? (
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-[11px] text-neutral-500 line-through">
+              R$ {(basePrice / 100).toFixed(2)}
+            </span>
+            <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+              R$ {(finalPrice / 100).toFixed(2)}
+            </span>
+          </div>
+        ) : (
+          <div className="text-sm font-semibold">
+            R$ {(finalPrice / 100).toFixed(2)}
+          </div>
+        )}
 
         {/* Badges em linha - sempre na mesma altura */}
         <div className="flex items-center gap-1.5 flex-wrap min-h-4">

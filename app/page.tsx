@@ -51,6 +51,7 @@ export default function Home() {
   const [categoryId, setCategoryId] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [productSearch, setProductSearch] = useState("");
   const role = session?.user?.role ?? "noUser";
   const canShowProducts = role === "noUser" || role === "CUSTOMER";
 
@@ -190,19 +191,29 @@ export default function Home() {
 
       {canShowProducts && (
         <section className="max-w-7xl mx-auto space-y-3 sm:space-y-4 px-1 sm:px-0">
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-center justify-center">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-3 items-stretch sm:items-center sm:justify-center">
             <Link
               href="/products"
-              className="flex-1 sm:flex-none text-center rounded-md bg-blue-600 px-3 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-blue-700"
+              className="text-center rounded-md bg-blue-600 px-3 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-blue-700"
             >
               Ver produtos
             </Link>
             <Link
               href="/services"
-              className="flex-1 sm:flex-none text-center rounded-md bg-emerald-600 px-3 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-emerald-700"
+              className="text-center rounded-md bg-emerald-600 px-3 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-emerald-700"
             >
               Agendar serviços
             </Link>
+          </div>
+
+          <div className="max-w-md mx-auto w-full">
+            <input
+              type="text"
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              placeholder="Buscar produtos..."
+              className="w-full rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
 
           <header className="text-center space-y-1">
@@ -230,7 +241,12 @@ export default function Home() {
           </header>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pb-8">
-            {products.map((product) => (
+            {products
+              .filter((product) =>
+                product.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+                product.description?.toLowerCase().includes(productSearch.toLowerCase())
+              )
+              .map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}
